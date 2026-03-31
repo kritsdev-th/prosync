@@ -5,68 +5,109 @@
 	let loading = $state(false);
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-gray-50">
-	<div class="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+<svelte:head>
+	<title>เข้าสู่ระบบ | ProSync ERP</title>
+</svelte:head>
+
+<div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-100 px-4">
+	<div class="w-full max-w-md">
+		<!-- Logo & Branding -->
 		<div class="mb-8 text-center">
-			<h1 class="text-2xl font-bold text-gray-900">ProSync ERP</h1>
-			<p class="mt-2 text-sm text-gray-600">
+			<div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-600/20">
+				<svg class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
+				</svg>
+			</div>
+			<h1 class="text-2xl font-bold tracking-tight text-gray-900">ProSync ERP</h1>
+			<p class="mt-1.5 text-sm leading-relaxed text-gray-500">
 				ระบบบริหารจัดการยุทธศาสตร์และติดตามแผนพัฒนาองค์การ
 			</p>
 		</div>
 
-		<form
-			method="POST"
-			use:enhance={() => {
-				loading = true;
-				return async ({ update }) => {
-					loading = false;
-					await update();
-				};
-			}}
-		>
-			<div class="space-y-4">
-				<div>
-					<label for="id_card" class="block text-sm font-medium text-gray-700">
-						เลขบัตรประชาชน
-					</label>
-					<input
-						type="text"
-						id="id_card"
-						name="id_card"
-						maxlength="13"
-						inputmode="numeric"
-						placeholder="กรอกเลขบัตรประชาชน 13 หลัก"
-						class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-						required
-					/>
+		<!-- Login Card -->
+		<div class="rounded-2xl border border-gray-200/80 bg-white p-8 shadow-xl shadow-gray-900/5">
+			<form
+				method="POST"
+				use:enhance={() => {
+					loading = true;
+					return async ({ update }) => {
+						loading = false;
+						await update();
+					};
+				}}
+			>
+				<div class="space-y-5">
+					<div>
+						<label for="id_card" class="mb-1.5 block text-sm font-medium text-gray-700">
+							เลขบัตรประชาชน
+						</label>
+						<input
+							type="text"
+							id="id_card"
+							name="id_card"
+							maxlength="13"
+							inputmode="numeric"
+							placeholder="กรอกเลขบัตรประชาชน 13 หลัก"
+							autocomplete="username"
+							class="block w-full rounded-xl border border-gray-300 bg-gray-50/50 px-4 py-2.5 text-sm
+								transition-colors duration-150
+								placeholder:text-gray-400
+								hover:border-gray-400
+								focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+							required
+						/>
+						{#if form?.errors?.id_card}
+							<p class="mt-1.5 text-sm text-red-600">{form.errors.id_card[0]}</p>
+						{/if}
+					</div>
+
+					<div>
+						<label for="password" class="mb-1.5 block text-sm font-medium text-gray-700">
+							รหัสผ่าน
+						</label>
+						<input
+							type="password"
+							id="password"
+							name="password"
+							placeholder="กรอกรหัสผ่าน"
+							autocomplete="current-password"
+							class="block w-full rounded-xl border border-gray-300 bg-gray-50/50 px-4 py-2.5 text-sm
+								transition-colors duration-150
+								placeholder:text-gray-400
+								hover:border-gray-400
+								focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+							required
+						/>
+					</div>
+
+					<button
+						type="submit"
+						disabled={loading}
+						class="relative w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm
+							transition-all duration-150
+							hover:bg-blue-700 hover:shadow-md
+							focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none
+							active:scale-[0.98]
+							disabled:opacity-60 disabled:pointer-events-none"
+					>
+						{#if loading}
+							<span class="inline-flex items-center gap-2">
+								<svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+								</svg>
+								กำลังเข้าสู่ระบบ...
+							</span>
+						{:else}
+							เข้าสู่ระบบ
+						{/if}
+					</button>
 				</div>
+			</form>
+		</div>
 
-				<div>
-					<label for="password" class="block text-sm font-medium text-gray-700">
-						รหัสผ่าน
-					</label>
-					<input
-						type="password"
-						id="password"
-						name="password"
-						placeholder="กรอกรหัสผ่าน"
-						class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-						required
-					/>
-				</div>
-
-				{#if form?.errors?.id_card}
-					<p class="text-sm text-red-600">{form.errors.id_card[0]}</p>
-				{/if}
-
-				<button
-					type="submit"
-					disabled={loading}
-					class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
-				>
-					{loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
-				</button>
-			</div>
-		</form>
+		<p class="mt-6 text-center text-xs text-gray-400">
+			ProSync ERP v1.0
+		</p>
 	</div>
 </div>

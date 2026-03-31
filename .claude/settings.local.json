@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(xargs wc:*)",
+      "Bash(npx svelte-check:*)"
     ]
   }
 }

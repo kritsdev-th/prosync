@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
 	import { enhance } from '$app/forms';
+	import Pagination from '$lib/components/Pagination.svelte';
+	import { exportToCsv } from '$lib/utils/format';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -8,6 +10,12 @@
 	let editingId = $state<number | null>(null);
 	let editingName = $state('');
 	let deletingId = $state<number | null>(null);
+	let currentPage = $state(1);
+	const perPage = 20;
+
+	let paginatedProvinces = $derived(
+		data.provinces.slice((currentPage - 1) * perPage, currentPage * perPage)
+	);
 
 	function startEdit(id: number, name: string) {
 		editingId = id;
@@ -26,6 +34,13 @@
 	function cancelDelete() {
 		deletingId = null;
 	}
+
+	function handleExportCsv() {
+		exportToCsv('provinces', [
+			{ key: 'id', label: 'รหัส' },
+			{ key: 'name', label: 'ชื่อจังหวัด' }
+		], data.provinces);
+	}
 </script>
 
 <div class="mx-auto max-w-4xl">
@@ -35,15 +50,23 @@
 			<h1 class="text-2xl font-bold text-gray-900">จัดการจังหวัด</h1>
 			<p class="mt-1 text-sm text-gray-500">เพิ่ม แก้ไข ลบ ข้อมูลจังหวัดในระบบ</p>
 		</div>
-		<button
-			onclick={() => (showCreateForm = !showCreateForm)}
-			class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
-		>
-			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-			</svg>
-			เพิ่มจังหวัด
-		</button>
+		<div class="flex gap-2">
+			<button
+				onclick={handleExportCsv}
+				class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+			>
+				ส่งออก CSV
+			</button>
+			<button
+				onclick={() => (showCreateForm = !showCreateForm)}
+				class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
+			>
+				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+				</svg>
+				เพิ่มจังหวัด
+			</button>
+		</div>
 	</div>
 
 	<!-- Create Form -->
@@ -65,7 +88,7 @@
 				<div class="flex items-end gap-3">
 					<div class="flex-1">
 						<label for="create-name" class="mb-1 block text-sm font-medium text-gray-700">
-							ชื่อจังหวัด
+							ชื่อจังหวัด <span class="text-red-500">*</span>
 						</label>
 						<input
 							id="create-name"
@@ -116,10 +139,9 @@
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-gray-200">
-				{#each data.provinces as province (province.id)}
+				{#each paginatedProvinces as province (province.id)}
 					<tr class="transition-colors hover:bg-gray-50">
 						{#if editingId === province.id}
-							<!-- Edit Mode -->
 							<td class="px-6 py-3 text-sm text-gray-500">{province.id}</td>
 							<td class="px-6 py-3" colspan="1">
 								<form
@@ -160,7 +182,6 @@
 							</td>
 							<td></td>
 						{:else if deletingId === province.id}
-							<!-- Delete Confirmation -->
 							<td class="px-6 py-3 text-sm text-gray-500">{province.id}</td>
 							<td class="px-6 py-3">
 								<span class="text-sm text-red-600">
@@ -196,7 +217,6 @@
 								</form>
 							</td>
 						{:else}
-							<!-- Normal Row -->
 							<td class="px-6 py-3 text-sm text-gray-500">{province.id}</td>
 							<td class="px-6 py-3 text-sm font-medium text-gray-900">{province.name}</td>
 							<td class="px-6 py-3 text-right">
@@ -226,12 +246,6 @@
 				{/each}
 			</tbody>
 		</table>
-
-		<!-- Footer count -->
-		{#if data.provinces.length > 0}
-			<div class="border-t bg-gray-50 px-6 py-3">
-				<p class="text-sm text-gray-500">ทั้งหมด {data.provinces.length} จังหวัด</p>
-			</div>
-		{/if}
+		<Pagination totalItems={data.provinces.length} bind:currentPage {perPage} />
 	</div>
 </div>

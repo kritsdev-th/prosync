@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import { formatThaiDateTime, formatBaht, formatNumber } from '$lib/utils/format';
 
 	let { data, form: formResult } = $props();
 
@@ -15,23 +17,24 @@
 		const key = Object.keys(payload).find((k) => k.startsWith(`step_${stepSequence}_`));
 		return key ? payload[key] : null;
 	}
+
+	let uiSchema = $derived(data.currentStep?.ui_schema as any);
 </script>
 
 <div>
 	<div class="mb-6">
-		<a href="/procurement" class="text-sm text-blue-600 hover:underline">← กลับ</a>
+		<a href="/procurement" class="text-sm text-blue-600 hover:underline">← กลับไปรายการเอกสาร</a>
 		<h1 class="mt-2 text-2xl font-bold text-gray-900">เอกสาร #{data.document.id}</h1>
 		<p class="text-sm text-gray-500">
 			{data.workflow.name} | แผน: {data.plan.title}
 		</p>
-		<span class="mt-2 inline-block rounded-full px-3 py-1 text-sm
-			{data.document.status === 'APPROVED_PROCUREMENT' ? 'bg-green-100 text-green-700' : data.document.status === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}">
-			{data.document.status === 'APPROVED_PROCUREMENT' ? 'อนุมัติแล้ว' : data.document.status === 'REJECTED' ? 'ปฏิเสธ' : 'กำลังดำเนินการ'}
-		</span>
+		<div class="mt-2">
+			<StatusBadge status={data.document.status} />
+		</div>
 	</div>
 
 	{#if formResult?.message}
-		<div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{formResult.message}</div>
+		<div class="mb-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700">{formResult.message}</div>
 	{/if}
 
 	<!-- Step Progress -->
@@ -59,7 +62,6 @@
 				ขั้นตอนที่ {data.currentStep.step_sequence}: {data.currentStep.step_name}
 			</h2>
 
-			{@const uiSchema = data.currentStep.ui_schema as any}
 			{#if uiSchema?.components}
 				<div class="mt-4 space-y-4">
 					{#each uiSchema.components as comp}
@@ -67,7 +69,7 @@
 
 						{#if compType === 'budget_input'}
 							<div>
-								<label class="block text-sm font-medium text-gray-700">วงเงินงบประมาณ (บาท)</label>
+								<label for="budget_amount" class="block text-sm font-medium text-gray-700">วงเงินงบประมาณ (บาท)</label>
 								<input type="number" step="0.01" id="budget_amount" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
 							</div>
 						{/if}
@@ -86,14 +88,12 @@
 								<h3 class="font-medium text-gray-800">
 									คณะกรรมการ: {committeeType}
 								</h3>
-								<!-- Existing committees -->
 								{#each data.committees.filter((c) => c.committee_type === committeeType) as member}
 									<div class="mt-2 flex items-center gap-2 text-sm">
 										<span class="font-medium">{member.user_name}</span>
 										<span class="text-gray-500">({member.role_in_committee})</span>
 									</div>
 								{/each}
-								<!-- Add committee form -->
 								<form method="POST" action="?/addCommittee" use:enhance class="mt-3 flex gap-2">
 									<input type="hidden" name="committee_type" value={committeeType} />
 									<select name="user_id" required class="flex-1 rounded-lg border border-gray-300 px-2 py-1 text-sm">
@@ -102,7 +102,7 @@
 											<option value={u.id}>{u.name}</option>
 										{/each}
 									</select>
-									<input name="role_in_committee" placeholder="ตำแหน่งในคณะ" class="rounded-lg border border-gray-300 px-2 py-1 text-sm" />
+									<input name="role_in_committee" placeholder="ตำแหน่งในคณะ" required class="rounded-lg border border-gray-300 px-2 py-1 text-sm" />
 									<button type="submit" class="rounded-lg bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700">เพิ่ม</button>
 								</form>
 							</div>
@@ -112,7 +112,7 @@
 							<div class="rounded-lg border p-4">
 								<h3 class="font-medium text-gray-800">เลือกผู้ประกอบการ {uiSchema.min_vendors ? `(ขั้นต่ำ ${uiSchema.min_vendors} ราย)` : ''}</h3>
 								{#each data.bidders as bidder}
-									<div class="mt-2 text-sm">{bidder.vendor_name} - {bidder.proposed_price ? `${Number(bidder.proposed_price).toLocaleString('th-TH')} บาท` : 'รอเสนอราคา'}</div>
+									<div class="mt-2 text-sm">{bidder.vendor_name} - {bidder.proposed_price ? formatBaht(bidder.proposed_price) : 'รอเสนอราคา'}</div>
 								{/each}
 								<form method="POST" action="?/addBidder" use:enhance class="mt-3 flex gap-2">
 									<select name="vendor_id" required class="flex-1 rounded-lg border border-gray-300 px-2 py-1 text-sm">
@@ -133,7 +133,7 @@
 									<form method="POST" action="?/addBidder" use:enhance class="mt-2 flex items-center gap-2 text-sm">
 										<input type="hidden" name="vendor_id" value={bidder.vendor_id} />
 										<span class="w-40">{bidder.vendor_name}</span>
-										<input name="proposed_price" type="number" step="0.01" placeholder="ราคาที่เสนอ" value={bidder.proposed_price || ''} class="rounded border px-2 py-1 text-sm" />
+										<input name="proposed_price" type="number" step="0.01" placeholder="ราคาที่เสนอ (บาท)" value={bidder.proposed_price || ''} class="rounded border px-2 py-1 text-sm" />
 										<button type="submit" class="rounded bg-blue-600 px-2 py-1 text-xs text-white">บันทึก</button>
 									</form>
 								{/each}
@@ -147,9 +147,8 @@
 									<thead>
 										<tr class="border-b">
 											<th class="px-2 py-1 text-left">บริษัท</th>
-											<th class="px-2 py-1 text-right">ราคาเสนอ</th>
+											<th class="px-2 py-1 text-right">ราคาเสนอ (บาท)</th>
 											<th class="px-2 py-1 text-center">คะแนน</th>
-											<th class="px-2 py-1 text-center">ผู้ชนะ</th>
 											<th class="px-2 py-1"></th>
 										</tr>
 									</thead>
@@ -157,7 +156,7 @@
 										{#each data.bidders as bidder}
 											<tr class="border-b">
 												<td class="px-2 py-1">{bidder.vendor_name}</td>
-												<td class="px-2 py-1 text-right font-mono">{bidder.proposed_price ? Number(bidder.proposed_price).toLocaleString('th-TH') : '-'}</td>
+												<td class="px-2 py-1 text-right font-mono">{bidder.proposed_price ? formatNumber(bidder.proposed_price) : '-'}</td>
 												<td class="px-2 py-1 text-center">
 													<form method="POST" action="?/updateBidderScore" use:enhance class="inline-flex gap-1">
 														<input type="hidden" name="bidder_id" value={bidder.id} />
@@ -181,15 +180,16 @@
 								<h3 class="font-medium text-gray-800">สรุปผลเพื่ออนุมัติ</h3>
 								<div class="mt-2 text-sm text-gray-600">
 									<p>แผนงาน: {data.plan.title}</p>
-									<p>งบประมาณ: {Number(data.plan.estimated_amount).toLocaleString('th-TH')} บาท</p>
+									<p>งบประมาณ: {formatBaht(data.plan.estimated_amount)}</p>
 									{#each data.bidders.filter((b) => b.is_winner) as winner}
-										<p class="mt-1 font-medium text-green-700">ผู้ชนะ: {winner.vendor_name} ({Number(winner.proposed_price || 0).toLocaleString('th-TH')} บาท)</p>
+										<p class="mt-1 font-medium text-green-700">ผู้ชนะ: {winner.vendor_name} ({formatBaht(winner.proposed_price || 0)})</p>
 									{/each}
 								</div>
 								<form method="POST" action="?/approve" use:enhance class="mt-4 space-y-3">
 									<input type="hidden" name="step_id" value={data.currentStep?.id} />
 									<div>
-										<textarea name="comment" placeholder="หมายเหตุ (บังคับเมื่อปฏิเสธ)" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+										<label for="approval-comment" class="block text-sm font-medium text-gray-700">หมายเหตุ</label>
+										<textarea id="approval-comment" name="comment" placeholder="หมายเหตุ (บังคับเมื่อปฏิเสธ)" rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
 									</div>
 									<div class="flex gap-2">
 										<button type="submit" name="action" value="APPROVED" class="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">อนุมัติ</button>
@@ -201,16 +201,16 @@
 
 						{#if compType === 'contract_details_form'}
 							<div>
-								<label class="block text-sm font-medium text-gray-700">เลขที่สัญญา</label>
+								<label for="contract_no" class="block text-sm font-medium text-gray-700">เลขที่สัญญา</label>
 								<input type="text" id="contract_no" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
 							</div>
 							<div class="grid grid-cols-2 gap-3">
 								<div>
-									<label class="block text-sm font-medium text-gray-700">วันที่เริ่มสัญญา</label>
+									<label for="contract_start" class="block text-sm font-medium text-gray-700">วันที่เริ่มสัญญา</label>
 									<input type="date" id="contract_start" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
 								</div>
 								<div>
-									<label class="block text-sm font-medium text-gray-700">วันที่สิ้นสุดสัญญา</label>
+									<label for="contract_end" class="block text-sm font-medium text-gray-700">วันที่สิ้นสุดสัญญา</label>
 									<input type="date" id="contract_end" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
 								</div>
 							</div>
@@ -218,7 +218,7 @@
 
 						{#if compType === 'inspection_form'}
 							<div>
-								<label class="block text-sm font-medium text-gray-700">วันที่ส่งมอบ</label>
+								<label for="delivery_date" class="block text-sm font-medium text-gray-700">วันที่ส่งมอบ</label>
 								<input type="date" id="delivery_date" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
 							</div>
 						{/if}
@@ -228,11 +228,11 @@
 								<p class="text-sm font-medium text-yellow-800">คำนวณค่าปรับ</p>
 								<div class="mt-2 grid grid-cols-2 gap-3">
 									<div>
-										<label class="text-xs text-gray-600">จำนวนวันล่าช้า</label>
+										<label for="days_late" class="text-xs text-gray-600">จำนวนวันล่าช้า</label>
 										<input type="number" id="days_late" value="0" class="mt-1 block w-full rounded border px-2 py-1 text-sm" />
 									</div>
 									<div>
-										<label class="text-xs text-gray-600">ค่าปรับ (บาท)</label>
+										<label for="fine_amount" class="text-xs text-gray-600">ค่าปรับ (บาท)</label>
 										<input type="number" step="0.01" id="fine_amount" value="0" class="mt-1 block w-full rounded border px-2 py-1 text-sm" />
 									</div>
 								</div>
@@ -244,7 +244,7 @@
 								<h3 class="font-medium text-gray-800">ส่งเรื่องเบิกจ่าย (สร้างฎีกา)</h3>
 								<form method="POST" action="?/generateDika" use:enhance class="mt-3 space-y-3">
 									<div>
-										<label class="block text-sm font-medium text-gray-700">ยอดเต็ม (บาท)</label>
+										<label class="block text-sm font-medium text-gray-700">ยอดเต็ม (บาท) <span class="text-red-500">*</span></label>
 										<input name="gross_amount" type="number" step="0.01" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
 									</div>
 									<div class="grid grid-cols-2 gap-3">
@@ -258,7 +258,7 @@
 										</div>
 									</div>
 									<div>
-										<label class="block text-sm font-medium text-gray-700">บัญชีจ่ายเงิน</label>
+										<label class="block text-sm font-medium text-gray-700">บัญชีจ่ายเงิน <span class="text-red-500">*</span></label>
 										<select name="payment_bank_account_id" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
 											{#each data.bankAccounts.filter((a) => !a.is_tax_pool) as account}
 												<option value={account.id}>{account.account_name} ({account.account_number})</option>
@@ -283,13 +283,12 @@
 					{/each}
 
 					<!-- Generic advance button for steps without special components -->
-					{@const hasSpecialAction = uiSchema.components.some((c: any) => {
+					{#if !uiSchema.components.some((c: any) => {
 						const t = typeof c === 'string' ? c : c.type;
 						return ['approval_summary', 'send_to_finance_button'].includes(t);
 					})}
-					{#if !hasSpecialAction}
 						<form method="POST" action="?/advanceStep" use:enhance>
-							<input type="hidden" name="step_data" value="{}" />
+							<input type="hidden" name="step_data" value={'{}'} />
 							<button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
 								บันทึกและไปขั้นตอนถัดไป
 							</button>
@@ -307,14 +306,12 @@
 			<div class="mt-3 space-y-2">
 				{#each data.approvals as approval}
 					<div class="flex items-center gap-3 rounded-lg border p-3">
-						<span class="rounded-full px-2 py-0.5 text-xs {approval.action === 'APPROVED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-							{approval.action === 'APPROVED' ? 'อนุมัติ' : 'ปฏิเสธ'}
-						</span>
+						<StatusBadge status={approval.action} />
 						<span class="text-sm font-medium">{approval.user_name}</span>
 						{#if approval.comment}
 							<span class="text-sm text-gray-500">- {approval.comment}</span>
 						{/if}
-						<span class="ml-auto text-xs text-gray-400">{new Date(approval.created_at).toLocaleString('th-TH')}</span>
+						<span class="ml-auto text-xs text-gray-400">{formatThaiDateTime(approval.created_at)}</span>
 					</div>
 				{/each}
 			</div>

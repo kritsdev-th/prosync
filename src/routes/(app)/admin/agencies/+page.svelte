@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
+	import Pagination from '$lib/components/Pagination.svelte';
+	import { exportToCsv } from '$lib/utils/format';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -8,6 +10,12 @@
 	let editName = $state('');
 	let editType = $state('');
 	let editProvinceId = $state<number | null>(null);
+	let currentPage = $state(1);
+	const perPage = 20;
+
+	let paginatedAgencies = $derived(
+		data.agencies.slice((currentPage - 1) * perPage, currentPage * perPage)
+	);
 
 	const agencyTypes = [
 		{ value: 'อบจ.', label: 'อบจ.' },
@@ -27,24 +35,34 @@
 	function cancelEdit() {
 		editingId = null;
 	}
+
+	function handleExportCsv() {
+		exportToCsv('agencies', [
+			{ key: 'name', label: 'ชื่อหน่วยงาน' },
+			{ key: 'agency_type', label: 'ประเภท' },
+			{ key: 'province_name', label: 'จังหวัด' }
+		], data.agencies);
+	}
 </script>
 
 <div class="mx-auto max-w-5xl">
-	<div class="mb-6">
-		<h1 class="text-2xl font-bold text-gray-900">จัดการหน่วยงาน</h1>
-		<p class="mt-1 text-sm text-gray-500">เพิ่ม แก้ไข ลบ หน่วยงานในระบบ</p>
+	<div class="mb-6 flex items-center justify-between">
+		<div>
+			<h1 class="text-2xl font-bold text-gray-900">จัดการหน่วยงาน</h1>
+			<p class="mt-1 text-sm text-gray-500">เพิ่ม แก้ไข ลบ หน่วยงานในระบบ</p>
+		</div>
+		<button onclick={handleExportCsv} class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+			ส่งออก CSV
+		</button>
 	</div>
 
-	<!-- Feedback messages -->
 	{#if form?.error}
 		<div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
 			{form.error}
 		</div>
 	{/if}
 	{#if form?.success}
-		<div
-			class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
-		>
+		<div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
 			บันทึกสำเร็จ
 		</div>
 	{/if}
@@ -54,9 +72,7 @@
 		<h2 class="mb-4 text-lg font-semibold text-gray-800">เพิ่มหน่วยงานใหม่</h2>
 		<form method="POST" action="?/create" use:enhance class="grid grid-cols-1 gap-4 sm:grid-cols-4">
 			<div>
-				<label for="name" class="mb-1 block text-sm font-medium text-gray-700"
-					>ชื่อหน่วยงาน</label
-				>
+				<label for="name" class="mb-1 block text-sm font-medium text-gray-700">ชื่อหน่วยงาน <span class="text-red-500">*</span></label>
 				<input
 					type="text"
 					id="name"
@@ -67,9 +83,7 @@
 				/>
 			</div>
 			<div>
-				<label for="agency_type" class="mb-1 block text-sm font-medium text-gray-700"
-					>ประเภท</label
-				>
+				<label for="agency_type" class="mb-1 block text-sm font-medium text-gray-700">ประเภท <span class="text-red-500">*</span></label>
 				<select
 					id="agency_type"
 					name="agency_type"
@@ -83,9 +97,7 @@
 				</select>
 			</div>
 			<div>
-				<label for="province_id" class="mb-1 block text-sm font-medium text-gray-700"
-					>จังหวัด</label
-				>
+				<label for="province_id" class="mb-1 block text-sm font-medium text-gray-700">จังหวัด <span class="text-red-500">*</span></label>
 				<select
 					id="province_id"
 					name="province_id"
@@ -121,7 +133,7 @@
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-gray-100">
-				{#each data.agencies as agency (agency.id)}
+				{#each paginatedAgencies as agency (agency.id)}
 					{#if editingId === agency.id}
 						<tr class="bg-blue-50/50">
 							<td colspan="4" class="px-6 py-3">
@@ -235,5 +247,6 @@
 				{/each}
 			</tbody>
 		</table>
+		<Pagination totalItems={data.agencies.length} bind:currentPage {perPage} />
 	</div>
 </div>

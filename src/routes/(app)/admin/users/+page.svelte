@@ -1,12 +1,20 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import Pagination from '$lib/components/Pagination.svelte';
+	import { exportToCsv } from '$lib/utils/format';
 
 	let { data, form } = $props();
 	let searchQuery = $state(data.search || '');
 	let showCreateModal = $state(false);
 	let editingUser = $state<any>(null);
 	let assigningUser = $state<any>(null);
+	let currentPage = $state(1);
+	const perPage = 20;
+
+	let paginatedUsers = $derived(
+		data.users.slice((currentPage - 1) * perPage, currentPage * perPage)
+	);
 
 	function getUserAssignments(userId: number) {
 		return data.assignments.filter((a: any) => a.user_id === userId);
@@ -14,6 +22,17 @@
 
 	function handleSearch() {
 		goto(`/admin/users?search=${encodeURIComponent(searchQuery)}`);
+	}
+
+	function handleExportCsv() {
+		exportToCsv('users', [
+			{ key: 'name', label: 'ชื่อ-สกุล' },
+			{ key: 'id_card', label: 'เลขบัตรประชาชน' },
+			{ key: 'agency_name', label: 'หน่วยงาน' },
+			{ key: 'position', label: 'ยศ/คำนำหน้า' },
+			{ key: 'position_rank', label: 'ระดับตำแหน่ง' },
+			{ key: 'email', label: 'อีเมล' }
+		], data.users);
 	}
 </script>
 
@@ -23,12 +42,17 @@
 			<h1 class="text-2xl font-bold text-gray-900">จัดการผู้ใช้งาน</h1>
 			<p class="mt-1 text-sm text-gray-500">ค้นหา เพิ่ม แก้ไข ลบ ผู้ใช้งาน และจัดการสิทธิ์</p>
 		</div>
-		<button
-			onclick={() => (showCreateModal = true)}
-			class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-		>
-			เพิ่มผู้ใช้งาน
-		</button>
+		<div class="flex gap-2">
+			<button onclick={handleExportCsv} class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+				ส่งออก CSV
+			</button>
+			<button
+				onclick={() => (showCreateModal = true)}
+				class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+			>
+				เพิ่มผู้ใช้งาน
+			</button>
+		</div>
 	</div>
 
 	<!-- Search -->
@@ -47,7 +71,7 @@
 	</div>
 
 	{#if form?.message}
-		<div class="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{form.message}</div>
+		<div class="mt-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700">{form.message}</div>
 	{/if}
 
 	<!-- Users Table -->
@@ -63,7 +87,7 @@
 				</tr>
 			</thead>
 			<tbody class="divide-y">
-				{#each data.users as user}
+				{#each paginatedUsers as user}
 					{@const assignments = getUserAssignments(user.id)}
 					<tr class="hover:bg-gray-50">
 						<td class="px-4 py-3">
@@ -118,6 +142,7 @@
 				{/each}
 			</tbody>
 		</table>
+		<Pagination totalItems={data.users.length} bind:currentPage {perPage} />
 	</div>
 </div>
 
@@ -134,15 +159,18 @@
 			}}>
 				<div class="mt-4 space-y-3">
 					<div>
-						<label class="block text-sm font-medium text-gray-700">ชื่อ-สกุล *</label>
+						<label class="block text-sm font-medium text-gray-700">ชื่อ-สกุล <span class="text-red-500">*</span></label>
 						<input name="name" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
 					</div>
 					<div>
-						<label class="block text-sm font-medium text-gray-700">เลขบัตรประชาชน *</label>
-						<input name="id_card" maxlength="13" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+						<label class="block text-sm font-medium text-gray-700">เลขบัตรประชาชน <span class="text-red-500">*</span></label>
+						<input name="id_card" maxlength="13" inputmode="numeric" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+						{#if form?.errors?.id_card}
+							<p class="mt-1 text-sm text-red-600">{form.errors.id_card[0]}</p>
+						{/if}
 					</div>
 					<div>
-						<label class="block text-sm font-medium text-gray-700">รหัสผ่าน *</label>
+						<label class="block text-sm font-medium text-gray-700">รหัสผ่าน <span class="text-red-500">*</span></label>
 						<input name="password" type="password" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
 					</div>
 					<div>
@@ -242,7 +270,6 @@
 		<div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
 			<h2 class="text-lg font-bold text-gray-900">จัดการสิทธิ์: {assigningUser.name}</h2>
 
-			<!-- Current assignments -->
 			{#if getUserAssignments(assigningUser.id).length > 0}
 			{@const currentAssignments = getUserAssignments(assigningUser.id)}
 				<div class="mt-4">
@@ -267,7 +294,6 @@
 				</div>
 			{/if}
 
-			<!-- Add new assignment -->
 			<form method="POST" action="?/assign" use:enhance={() => {
 				return async ({ update }) => {
 					await update();

@@ -1,1 +1,17 @@
 @import 'tailwindcss';
+
+@theme {
+	--color-brand-50: oklch(0.97 0.015 250);
+	--color-brand-100: oklch(0.93 0.03 250);
+	--color-brand-500: oklch(0.55 0.18 250);
+	--color-brand-600: oklch(0.48 0.2 250);
+	--color-brand-700: oklch(0.42 0.18 250);
+}
+
+@layer base {
+	body {
+		font-family: 'Noto Sans Thai', 'Inter', system-ui, -apple-system, sans-serif;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+}

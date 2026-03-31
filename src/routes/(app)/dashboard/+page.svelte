@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { formatBaht } from '$lib/utils/format';
+
 	let { data } = $props();
 	const stats = data.stats as Record<string, any>;
 </script>
@@ -37,19 +39,19 @@
 				<div class="mt-2 space-y-1">
 					<div class="flex justify-between text-xs">
 						<span class="text-gray-500">คาดการณ์รายจ่าย</span>
-						<span class="font-mono font-medium text-red-600">{Number(stats.fiscalYear.total_estimated_expense).toLocaleString('th-TH')}</span>
+						<span class="font-mono font-medium text-red-600">{formatBaht(stats.fiscalYear.total_estimated_expense)}</span>
 					</div>
 					<div class="flex justify-between text-xs">
 						<span class="text-gray-500">จ่ายจริง</span>
-						<span class="font-mono font-medium text-red-700">{Number(stats.fiscalYear.total_actual_expense).toLocaleString('th-TH')}</span>
+						<span class="font-mono font-medium text-red-700">{formatBaht(stats.fiscalYear.total_actual_expense)}</span>
 					</div>
 					<div class="flex justify-between text-xs">
 						<span class="text-gray-500">คาดการณ์รายรับ</span>
-						<span class="font-mono font-medium text-green-600">{Number(stats.fiscalYear.total_estimated_income).toLocaleString('th-TH')}</span>
+						<span class="font-mono font-medium text-green-600">{formatBaht(stats.fiscalYear.total_estimated_income)}</span>
 					</div>
 					<div class="flex justify-between text-xs">
 						<span class="text-gray-500">รับจริง</span>
-						<span class="font-mono font-medium text-green-700">{Number(stats.fiscalYear.total_actual_income).toLocaleString('th-TH')}</span>
+						<span class="font-mono font-medium text-green-700">{formatBaht(stats.fiscalYear.total_actual_income)}</span>
 					</div>
 				</div>
 			</div>
@@ -58,7 +60,7 @@
 		{#if stats.activeDocuments !== undefined}
 			<div class="rounded-xl border bg-white p-6 shadow-sm">
 				<p class="text-sm font-medium text-gray-500">เอกสารกำลังดำเนินการ</p>
-				<p class="mt-1 text-3xl font-bold text-yellow-600">{stats.activeDocuments}</p>
+				<p class="mt-1 text-3xl font-bold text-blue-600">{stats.activeDocuments}</p>
 				<a href="/procurement" class="mt-2 inline-block text-xs text-blue-600 hover:underline">ดูทั้งหมด →</a>
 			</div>
 		{/if}
@@ -66,7 +68,7 @@
 		{#if stats.pendingDikaVouchers !== undefined}
 			<div class="rounded-xl border bg-white p-6 shadow-sm">
 				<p class="text-sm font-medium text-gray-500">ฎีการอตรวจสอบ</p>
-				<p class="mt-1 text-3xl font-bold text-purple-600">{stats.pendingDikaVouchers}</p>
+				<p class="mt-1 text-3xl font-bold text-yellow-600">{stats.pendingDikaVouchers}</p>
 				<a href="/finance" class="mt-2 inline-block text-xs text-blue-600 hover:underline">ดูทั้งหมด →</a>
 			</div>
 		{/if}

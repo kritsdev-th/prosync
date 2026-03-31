@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import { formatBaht, formatNumber } from '$lib/utils/format';
 
 	let { data, form: formResult } = $props();
 	let showCreateModal = $state(false);
@@ -39,8 +40,8 @@
 					{/if}
 				</div>
 				<div class="mt-1 flex gap-4 text-xs text-gray-500">
-					<span>งบตั้ง: {Number(node.estimated_amount).toLocaleString('th-TH')} บาท</span>
-					<span>จ่ายจริง: {Number(node.actual_amount).toLocaleString('th-TH')} บาท</span>
+					<span>งบตั้ง: {formatBaht(node.estimated_amount)}</span>
+					<span>จ่ายจริง: {formatBaht(node.actual_amount)}</span>
 				</div>
 			</div>
 			<div class="flex gap-1">
@@ -128,19 +129,19 @@
 			<div class="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
 				<div class="rounded-xl border bg-white p-4">
 					<p class="text-xs text-gray-500">คาดการณ์รายรับ</p>
-					<p class="mt-1 text-lg font-bold text-green-600">{Number(activeFy.total_estimated_income).toLocaleString('th-TH')}</p>
+					<p class="mt-1 text-lg font-bold text-green-600">{formatBaht(activeFy.total_estimated_income)}</p>
 				</div>
 				<div class="rounded-xl border bg-white p-4">
 					<p class="text-xs text-gray-500">คาดการณ์รายจ่าย</p>
-					<p class="mt-1 text-lg font-bold text-red-600">{Number(activeFy.total_estimated_expense).toLocaleString('th-TH')}</p>
+					<p class="mt-1 text-lg font-bold text-red-600">{formatBaht(activeFy.total_estimated_expense)}</p>
 				</div>
 				<div class="rounded-xl border bg-white p-4">
 					<p class="text-xs text-gray-500">รายรับจริง</p>
-					<p class="mt-1 text-lg font-bold text-green-700">{Number(activeFy.total_actual_income).toLocaleString('th-TH')}</p>
+					<p class="mt-1 text-lg font-bold text-green-700">{formatBaht(activeFy.total_actual_income)}</p>
 				</div>
 				<div class="rounded-xl border bg-white p-4">
 					<p class="text-xs text-gray-500">รายจ่ายจริง</p>
-					<p class="mt-1 text-lg font-bold text-red-700">{Number(activeFy.total_actual_expense).toLocaleString('th-TH')}</p>
+					<p class="mt-1 text-lg font-bold text-red-700">{formatBaht(activeFy.total_actual_expense)}</p>
 				</div>
 			</div>
 		{/if}
@@ -171,7 +172,7 @@
 				<input type="hidden" name="agency_id" value={data.selectedAgencyId || ''} />
 				<div class="mt-4 space-y-3">
 					<div>
-						<label class="block text-sm font-medium text-gray-700">ปีงบประมาณ (พ.ศ.) *</label>
+						<label class="block text-sm font-medium text-gray-700">ปีงบประมาณ (พ.ศ.) <span class="text-red-500">*</span></label>
 						<input name="year_name" maxlength="4" placeholder="เช่น 2569" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
 					</div>
 				</div>
@@ -197,11 +198,11 @@
 				<input type="hidden" name="parent_id" value={creatingParentId || ''} />
 				<div class="mt-4 space-y-3">
 					<div>
-						<label class="block text-sm font-medium text-gray-700">ชื่อแผน *</label>
+						<label class="block text-sm font-medium text-gray-700">ชื่อแผน <span class="text-red-500">*</span></label>
 						<input name="title" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
 					</div>
 					<div>
-						<label class="block text-sm font-medium text-gray-700">ประเภท *</label>
+						<label class="block text-sm font-medium text-gray-700">ประเภท <span class="text-red-500">*</span></label>
 						<select name="plan_type" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
 							<option value="EXPENSE">รายจ่าย (EXPENSE)</option>
 							<option value="INCOME">รายรับ (INCOME)</option>

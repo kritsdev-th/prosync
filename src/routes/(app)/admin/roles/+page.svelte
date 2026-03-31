@@ -1,12 +1,20 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
+	import Pagination from '$lib/components/Pagination.svelte';
+	import { exportToCsv } from '$lib/utils/format';
 
 	let { data }: { data: PageData } = $props();
 
 	let editingId = $state<number | null>(null);
 	let editName = $state('');
 	let editPermissions = $state<Record<string, Record<string, boolean>>>({});
+	let currentPage = $state(1);
+	const perPage = 20;
+
+	let paginatedRoles = $derived(
+		data.roles.slice((currentPage - 1) * perPage, currentPage * perPage)
+	);
 
 	const PERMISSION_LABELS: Record<string, { label: string; perms: Record<string, string> }> = {
 		system: {
@@ -71,18 +79,35 @@
 		editName = '';
 		editPermissions = {};
 	}
+
+	function handleExportCsv() {
+		exportToCsv('roles', [
+			{ key: 'name', label: 'ชื่อบทบาท' },
+			{ key: 'permissions_summary', label: 'สิทธิ์' }
+		], data.roles.map((r: any) => ({
+			...r,
+			permissions_summary: getActivePermissions(r.permissions).join(', ')
+		})));
+	}
 </script>
 
 <div>
-	<h1 class="text-2xl font-bold text-gray-900">จัดการบทบาทและสิทธิ์</h1>
-	<p class="mt-1 text-sm text-gray-500">สร้าง แก้ไข ลบ บทบาท พร้อมกำหนดสิทธิ์การใช้งาน</p>
+	<div class="flex items-center justify-between">
+		<div>
+			<h1 class="text-2xl font-bold text-gray-900">จัดการบทบาทและสิทธิ์</h1>
+			<p class="mt-1 text-sm text-gray-500">สร้าง แก้ไข ลบ บทบาท พร้อมกำหนดสิทธิ์การใช้งาน</p>
+		</div>
+		<button onclick={handleExportCsv} class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+			ส่งออก CSV
+		</button>
+	</div>
 
 	<!-- Create Form -->
 	<div class="mt-6 rounded-xl border bg-white p-6 shadow-sm">
 		<h2 class="text-lg font-semibold text-gray-900">เพิ่มบทบาทใหม่</h2>
 		<form method="POST" action="?/create" use:enhance class="mt-4 space-y-4">
 			<div>
-				<label for="create-name" class="block text-sm font-medium text-gray-700">ชื่อบทบาท</label>
+				<label for="create-name" class="block text-sm font-medium text-gray-700">ชื่อบทบาท <span class="text-red-500">*</span></label>
 				<input
 					id="create-name"
 					type="text"
@@ -131,7 +156,7 @@
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-gray-200 bg-white">
-				{#each data.roles as role}
+				{#each paginatedRoles as role}
 					{#if editingId === role.id}
 						<tr class="bg-blue-50">
 							<td colspan="3" class="px-6 py-4">
@@ -194,10 +219,9 @@
 						<tr class="hover:bg-gray-50">
 							<td class="px-6 py-4 text-sm font-medium text-gray-900">{role.name}</td>
 							<td class="px-6 py-4 text-sm text-gray-500">
-								{@const active = getActivePermissions(role.permissions)}
-								{#if active.length > 0}
+								{#if getActivePermissions(role.permissions).length > 0}
 									<div class="flex flex-wrap gap-1">
-										{#each active as perm}
+										{#each getActivePermissions(role.permissions) as perm}
 											<span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{perm}</span>
 										{/each}
 									</div>
@@ -232,5 +256,6 @@
 				{/each}
 			</tbody>
 		</table>
+		<Pagination totalItems={data.roles.length} bind:currentPage {perPage} />
 	</div>
 </div>

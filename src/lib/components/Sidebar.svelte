@@ -16,26 +16,48 @@
 	);
 </script>
 
-{#if open}
-	<aside class="flex w-64 flex-col border-r bg-white shadow-sm">
-		<div class="flex h-14 items-center border-b px-4">
-			<h2 class="text-lg font-bold text-blue-600">ProSync</h2>
+<aside
+	class="flex w-64 flex-col border-r border-gray-200/80 bg-white shadow-sm transition-all duration-200 ease-out
+		{open ? 'translate-x-0' : '-translate-x-full absolute z-40 h-full'}"
+>
+	<!-- Brand -->
+	<div class="flex h-14 items-center gap-2.5 border-b border-gray-100 px-5">
+		<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 shadow-sm shadow-blue-600/20">
+			<svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
+			</svg>
 		</div>
+		<span class="text-base font-bold tracking-tight text-gray-900">ProSync</span>
+	</div>
 
-		<nav class="flex-1 space-y-1 p-3">
-			{#each navItems as item}
-				{@const active = $page.url.pathname.startsWith(item.href)}
-				<a
-					href={item.href}
-					class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-						{active ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}"
+	<!-- Navigation -->
+	<nav class="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
+		{#each navItems as item}
+			{@const active = $page.url.pathname.startsWith(item.href)}
+			<a
+				href={item.href}
+				class="group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium
+					transition-all duration-150 ease-out
+					{active
+						? 'bg-blue-50 text-blue-700 shadow-sm shadow-blue-500/5'
+						: 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}"
+			>
+				<svg
+					class="h-[18px] w-[18px] shrink-0 transition-colors duration-150
+						{active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
 				>
-					<svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={item.icon} />
-					</svg>
-					{item.label}
-				</a>
-			{/each}
-		</nav>
-	</aside>
-{/if}
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={item.icon} />
+				</svg>
+				{item.label}
+			</a>
+		{/each}
+	</nav>
+
+	<!-- Footer -->
+	<div class="border-t border-gray-100 px-4 py-3">
+		<p class="text-[11px] text-gray-400">ProSync ERP v1.0</p>
+	</div>
+</aside>

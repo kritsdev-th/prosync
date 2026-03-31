@@ -1,21 +1,27 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import Pagination from '$lib/components/Pagination.svelte';
+	import { formatThaiDateTime, formatBaht, exportToCsv } from '$lib/utils/format';
 
 	let { data, form: formResult } = $props();
 	let showCreateModal = $state(false);
+	let currentPage = $state(1);
+	const perPage = 20;
 
-	const statusColors: Record<string, string> = {
-		IN_PROGRESS: 'bg-yellow-100 text-yellow-700',
-		APPROVED_PROCUREMENT: 'bg-green-100 text-green-700',
-		REJECTED: 'bg-red-100 text-red-700'
-	};
+	let paginatedDocs = $derived(
+		data.documents.slice((currentPage - 1) * perPage, currentPage * perPage)
+	);
 
-	const statusLabels: Record<string, string> = {
-		IN_PROGRESS: 'กำลังดำเนินการ',
-		APPROVED_PROCUREMENT: 'อนุมัติแล้ว',
-		REJECTED: 'ปฏิเสธ'
-	};
+	function handleExportCsv() {
+		exportToCsv('procurement-documents', [
+			{ key: 'id', label: 'รหัส' },
+			{ key: 'workflow_name', label: 'วิธีจัดซื้อ' },
+			{ key: 'plan_title', label: 'แผนงาน' },
+			{ key: 'status', label: 'สถานะ' }
+		], data.documents);
+	}
 </script>
 
 <div>
@@ -24,12 +30,20 @@
 			<h1 class="text-2xl font-bold text-gray-900">จัดซื้อจัดจ้าง</h1>
 			<p class="mt-1 text-sm text-gray-500">จัดการเอกสารจัดซื้อจัดจ้างตาม Workflow</p>
 		</div>
-		<button
-			onclick={() => (showCreateModal = true)}
-			class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-		>
-			สร้างเอกสารจัดซื้อ
-		</button>
+		<div class="flex gap-2">
+			<button
+				onclick={handleExportCsv}
+				class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+			>
+				ส่งออก CSV
+			</button>
+			<button
+				onclick={() => (showCreateModal = true)}
+				class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+			>
+				สร้างเอกสารจัดซื้อ
+			</button>
+		</div>
 	</div>
 
 	{#if data.user.is_super_admin && data.agencies.length > 0}
@@ -47,10 +61,10 @@
 	{/if}
 
 	{#if formResult?.message}
-		<div class="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{formResult.message}</div>
+		<div class="mt-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700">{formResult.message}</div>
 	{/if}
 	{#if formResult?.errors?.plan_id}
-		<div class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{formResult.errors.plan_id[0]}</div>
+		<div class="mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{formResult.errors.plan_id[0]}</div>
 	{/if}
 
 	<!-- Documents Table -->
@@ -66,15 +80,13 @@
 				</tr>
 			</thead>
 			<tbody class="divide-y">
-				{#each data.documents as doc}
+				{#each paginatedDocs as doc}
 					<tr class="hover:bg-gray-50">
 						<td class="px-4 py-3 font-mono text-gray-500">{doc.id}</td>
 						<td class="px-4 py-3">{doc.workflow_name}</td>
 						<td class="px-4 py-3 font-medium">{doc.plan_title}</td>
 						<td class="px-4 py-3">
-							<span class="rounded-full px-2 py-0.5 text-xs {statusColors[doc.status] || 'bg-gray-100 text-gray-600'}">
-								{statusLabels[doc.status] || doc.status}
-							</span>
+							<StatusBadge status={doc.status} />
 						</td>
 						<td class="px-4 py-3">
 							<a
@@ -92,6 +104,7 @@
 				{/each}
 			</tbody>
 		</table>
+		<Pagination totalItems={data.documents.length} bind:currentPage {perPage} />
 	</div>
 </div>
 
@@ -112,7 +125,7 @@
 				<input type="hidden" name="agency_id" value={data.selectedAgencyId || ''} />
 				<div class="mt-4 space-y-3">
 					<div>
-						<label class="block text-sm font-medium text-gray-700">วิธีจัดซื้อจัดจ้าง *</label>
+						<label class="block text-sm font-medium text-gray-700">วิธีจัดซื้อจัดจ้าง <span class="text-red-500">*</span></label>
 						<select name="workflow_id" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
 							<option value="">-- เลือกวิธี --</option>
 							{#each data.workflows as wf}
@@ -121,15 +134,18 @@
 						</select>
 					</div>
 					<div>
-						<label class="block text-sm font-medium text-gray-700">แผนงาน (Leaf Node) *</label>
+						<label class="block text-sm font-medium text-gray-700">แผนงาน (Leaf Node) <span class="text-red-500">*</span></label>
 						<select name="plan_id" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
 							<option value="">-- เลือกแผนงาน --</option>
 							{#each data.leafPlans as plan}
 								<option value={plan.id}>
-									[ปี {plan.fiscal_year}] {plan.title} (งบ {Number(plan.estimated_amount).toLocaleString('th-TH')} บาท)
+									[ปี {plan.fiscal_year}] {plan.title} (งบ {formatBaht(plan.estimated_amount)})
 								</option>
 							{/each}
 						</select>
+						{#if formResult?.errors?.plan_id}
+							<p class="mt-1 text-sm text-red-600">{formResult.errors.plan_id[0]}</p>
+						{/if}
 					</div>
 				</div>
 				<div class="mt-6 flex justify-end gap-2">
