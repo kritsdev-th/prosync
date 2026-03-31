@@ -4,7 +4,13 @@
       "Bash(npm install:*)",
       "Bash(xargs wc:*)",
       "Bash(npx svelte-check:*)",
-      "Bash(find C:UserskritsDesktopprosyncsrcroutes -type f -name *+server.ts)"
+      "Bash(find C:UserskritsDesktopprosyncsrcroutes -type f -name *+server.ts)",
+      "Bash(find /c/Users/krits/Desktop/prosync -type f -name *logo*)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -rn \"favicon\\\\|icon\" /c/Users/krits/Desktop/prosync/src --include=*.ts --include=*.js --include=*.html)",
+      "Bash(ls:*)",
+      "Bash(grep -rn \"src=\\\\|href=.*\\\\.\\\\\\(png\\\\|jpg\\\\|jpeg\\\\|svg\\\\|webp\\\\|gif\\\\\\)\" /c/Users/krits/Desktop/prosync/src --include=*.svelte)",
+      "Bash(grep -rn \"img\\\\|image\\\\|Image\" /c/Users/krits/Desktop/prosync/src --include=*.svelte --include=*.ts)"
     ]
   }
 }

@@ -13,11 +13,7 @@
 	<div class="w-full max-w-md">
 		<!-- Logo & Branding -->
 		<div class="mb-8 text-center">
-			<div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-600/20">
-				<svg class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
-				</svg>
-			</div>
+			<img src="/prosync-erp.png" alt="ProSync ERP" class="mx-auto mb-4 h-20 w-auto" />
 			<h1 class="text-2xl font-bold tracking-tight text-gray-900">ProSync ERP</h1>
 			<p class="mt-1.5 text-sm leading-relaxed text-gray-500">
 				ระบบบริหารจัดการยุทธศาสตร์และติดตามแผนพัฒนาองค์การ
