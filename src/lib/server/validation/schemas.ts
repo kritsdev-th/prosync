@@ -46,6 +46,22 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export const registerSchema = z.object({
+	id_card: thaiIdCard,
+	password: requiredString('รหัสผ่าน').pipe(z.string().min(6, 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร')),
+	confirm_password: requiredString('ยืนยันรหัสผ่าน'),
+	name: requiredString('ชื่อ-สกุล').pipe(z.string().max(255, 'ชื่อต้องไม่เกิน 255 ตัวอักษร')),
+	email: z.string().email('รูปแบบอีเมลไม่ถูกต้อง').nullable().optional()
+		.or(z.literal('').transform(() => null)),
+	position: optionalString,
+	position_rank: optionalString
+}).refine((data) => data.password === data.confirm_password, {
+	message: 'รหัสผ่านไม่ตรงกัน',
+	path: ['confirm_password']
+});
+
+export type RegisterInput = z.infer<typeof registerSchema>;
+
 // ──────────────────────────────────────────────
 // Users
 // ──────────────────────────────────────────────

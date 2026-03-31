@@ -63,7 +63,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const accessToken = event.cookies.get('accessToken');
 	const refreshToken = event.cookies.get('refreshToken');
 	const isAuthRoute =
-		event.url.pathname.startsWith('/login') || event.url.pathname.startsWith('/api/auth');
+		event.url.pathname.startsWith('/login') ||
+		event.url.pathname.startsWith('/register') ||
+		event.url.pathname.startsWith('/api/auth');
 
 	// 1. Try access token
 	if (accessToken) {
@@ -97,8 +99,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		throw redirect(303, '/login');
 	}
 
-	// 4. Redirect to dashboard if already logged in and visiting login
-	if (event.locals.user && event.url.pathname === '/login') {
+	// 4. Redirect to dashboard if already logged in and visiting auth pages
+	if (event.locals.user && (event.url.pathname === '/login' || event.url.pathname === '/register')) {
 		throw redirect(303, '/dashboard');
 	}
 
