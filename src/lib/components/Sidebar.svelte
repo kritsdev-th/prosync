@@ -17,43 +17,106 @@
 </script>
 
 <aside
-	class="flex w-64 flex-col border-r border-gray-200/80 bg-white shadow-sm transition-all duration-200 ease-out
-		{open ? 'translate-x-0' : '-translate-x-full absolute z-40 h-full'}"
+	class="flex w-64 flex-col border-r transition-all duration-300 ease-out-expo
+		{open 
+			? 'translate-x-0 bg-white/95 backdrop-blur-sm' 
+			: '-translate-x-full absolute z-40 h-full bg-white/95 backdrop-blur-sm'}"
+	style="border-color: oklch(0.90 0.012 180 / 0.8);"
 >
 	<!-- Brand -->
-	<div class="flex h-14 items-center gap-2.5 border-b border-gray-100 px-5">
-		<img src="/prosync-erp.png" alt="ProSync ERP" class="h-8 w-auto" />
-		<span class="text-base font-bold tracking-tight text-gray-900">ProSync ERP</span>
+	<div class="group flex h-16 items-center gap-3 border-b px-5 transition-colors duration-200"
+		style="border-color: oklch(0.94 0.008 180 / 0.6);"
+	>
+		<div class="relative flex h-10 w-10 items-center justify-center">
+			<div class="absolute inset-0 rounded-xl bg-gradient-to-br from-health-100 to-brand-100 opacity-80 transition-opacity duration-300 group-hover:opacity-100"></div>
+			<img 
+				src="/prosync-erp.png" 
+				alt="ProSync ERP" 
+				class="relative h-6 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
+			/>
+		</div>
+		<div class="flex flex-col">
+			<span class="text-base font-bold tracking-tight" style="color: oklch(0.30 0.045 180);">ProSync ERP</span>
+			<span class="text-[10px] font-medium" style="color: oklch(0.58 0.030 180);">Organizational Development</span>
+		</div>
 	</div>
 
 	<!-- Navigation -->
-	<nav class="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
-		{#each navItems as item}
+	<nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+		{#each navItems as item, i}
 			{@const active = $page.url.pathname.startsWith(item.href)}
 			<a
 				href={item.href}
-				class="group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium
-					transition-all duration-150 ease-out
-					{active
-						? 'bg-blue-50 text-blue-700 shadow-sm shadow-blue-500/5'
-						: 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}"
+				class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium
+					transition-all duration-200 ease-out-quart
+					focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30"
+				style="
+					{active 
+						? 'background-color: oklch(0.93 0.04 240 / 0.5);' 
+						: ''}
+				"
 			>
-				<svg
-					class="h-[18px] w-[18px] shrink-0 transition-colors duration-150
-						{active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
+				<!-- Active indicator bar -->
+				{#if active}
+					<div class="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-full bg-gradient-to-b from-brand-500 to-health-500"></div>
+				{/if}
+				
+				<!-- Icon with background -->
+				<div class="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200
+					{active 
+						? 'bg-white shadow-sm' 
+						: 'bg-transparent group-hover:bg-white/60'}"
+					style="
+						{active 
+							? 'color: oklch(0.52 0.14 240);' 
+							: 'color: oklch(0.70 0.025 180);'}
+						{!active && 'group-hover: color: oklch(0.58 0.030 180);'}
+					"
 				>
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={item.icon} />
-				</svg>
-				{item.label}
+					<svg
+						class="h-4 w-4 transition-transform duration-200 group-hover:scale-110"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="1.5"
+					>
+						<path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
+					</svg>
+				</div>
+				
+				<!-- Label -->
+				<span class="transition-colors duration-200"
+					style="
+						{active 
+							? 'color: oklch(0.45 0.12 240);' 
+							: 'color: oklch(0.58 0.030 180);'}
+						{!active && 'group-hover: color: oklch(0.38 0.040 180);'}
+					"
+				>
+					{item.label}
+				</span>
+
+				<!-- Hover background glow -->
+				{#if !active}
+					<div class="absolute inset-0 -z-10 rounded-xl opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+						style="background: linear-gradient(90deg, oklch(0.97 0.02 240 / 0.4), transparent);"></div>
+				{/if}
 			</a>
 		{/each}
 	</nav>
 
 	<!-- Footer -->
-	<div class="border-t border-gray-100 px-4 py-3">
-		<p class="text-[11px] text-gray-400">ProSync ERP v1.0</p>
+	<div class="border-t px-4 py-4" style="border-color: oklch(0.94 0.008 180 / 0.6);">
+		<div class="flex items-center gap-2 rounded-lg bg-gradient-to-br from-brand-50 to-health-50 p-2.5">
+			<div class="flex h-6 w-6 items-center justify-center rounded-md bg-white shadow-sm">
+				<svg class="h-3.5 w-3.5" style="color: oklch(0.52 0.14 240);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" />
+				</svg>
+			</div>
+			<div class="flex flex-col">
+				<span class="text-[10px] font-semibold" style="color: oklch(0.45 0.12 240);">v1.0.0</span>
+				<span class="text-[9px]" style="color: oklch(0.58 0.030 180);">Latest Release</span>
+			</div>
+		</div>
 	</div>
 </aside>

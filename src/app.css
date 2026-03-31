@@ -1,17 +1,259 @@
 @import 'tailwindcss';
 
+/* 
+ * ProSync ERP - Hospital Healthy Theme
+ * Color palette: Green (health, growth) + Soft Blue (trust, professionalism)
+ * Using OKLCH for perceptually uniform colors
+ */
+
 @theme {
-	--color-brand-50: oklch(0.97 0.015 250);
-	--color-brand-100: oklch(0.93 0.03 250);
-	--color-brand-500: oklch(0.55 0.18 250);
-	--color-brand-600: oklch(0.48 0.2 250);
-	--color-brand-700: oklch(0.42 0.18 250);
+	/* Brand Primary - Soft Blue (trust, professionalism) */
+	--color-brand-50: oklch(0.97 0.02 240);
+	--color-brand-100: oklch(0.93 0.04 240);
+	--color-brand-200: oklch(0.88 0.06 240);
+	--color-brand-300: oklch(0.80 0.08 240);
+	--color-brand-400: oklch(0.70 0.10 240);
+	--color-brand-500: oklch(0.60 0.12 240);
+	--color-brand-600: oklch(0.52 0.14 240);
+	--color-brand-700: oklch(0.45 0.12 240);
+	--color-brand-800: oklch(0.38 0.10 240);
+	--color-brand-900: oklch(0.32 0.08 240);
+
+	/* Brand Secondary - Green (health, growth, vitality) */
+	--color-health-50: oklch(0.97 0.02 150);
+	--color-health-100: oklch(0.93 0.04 150);
+	--color-health-200: oklch(0.88 0.06 150);
+	--color-health-300: oklch(0.80 0.08 150);
+	--color-health-400: oklch(0.70 0.10 150);
+	--color-health-500: oklch(0.62 0.14 150);
+	--color-health-600: oklch(0.54 0.16 150);
+	--color-health-700: oklch(0.46 0.14 150);
+	--color-health-800: oklch(0.38 0.12 150);
+	--color-health-900: oklch(0.32 0.10 150);
+
+	/* Warm gray with subtle green tint for cohesion */
+	--color-slate-50: oklch(0.97 0.005 180);
+	--color-slate-100: oklch(0.94 0.008 180);
+	--color-slate-200: oklch(0.90 0.012 180);
+	--color-slate-300: oklch(0.84 0.018 180);
+	--color-slate-400: oklch(0.70 0.025 180);
+	--color-slate-500: oklch(0.58 0.030 180);
+	--color-slate-600: oklch(0.46 0.035 180);
+	--color-slate-700: oklch(0.38 0.040 180);
+	--color-slate-800: oklch(0.30 0.045 180);
+	--color-slate-900: oklch(0.24 0.050 180);
+
+	/* Semantic colors */
+	--color-success: oklch(0.62 0.14 150);
+	--color-success-muted: oklch(0.93 0.04 150);
+	--color-warning: oklch(0.75 0.12 85);
+	--color-warning-muted: oklch(0.95 0.04 85);
+	--color-error: oklch(0.58 0.18 25);
+	--color-error-muted: oklch(0.93 0.04 25);
+	--color-info: oklch(0.60 0.12 240);
+	--color-info-muted: oklch(0.93 0.04 240);
+
+	/* Shadows with color tinting */
+	--shadow-sm: 0 1px 2px 0 oklch(0.58 0.03 240 / 0.08);
+	--shadow-md: 0 4px 6px -1px oklch(0.58 0.03 240 / 0.10), 0 2px 4px -2px oklch(0.58 0.03 240 / 0.06);
+	--shadow-lg: 0 10px 15px -3px oklch(0.58 0.03 240 / 0.12), 0 4px 6px -4px oklch(0.58 0.03 240 / 0.08);
+	--shadow-xl: 0 20px 25px -5px oklch(0.58 0.03 240 / 0.14), 0 8px 10px -6px oklch(0.58 0.03 240 / 0.10);
+
+	/* Animation timing */
+	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+	--ease-in-out-quint: cubic-bezier(0.83, 0, 0.17, 1);
+	--ease-spring: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @layer base {
 	body {
-		font-family: 'Noto Sans Thai', 'Inter', system-ui, -apple-system, sans-serif;
+		font-family: 'Noto Sans Thai', system-ui, -apple-system, sans-serif;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
+		background-color: var(--color-slate-50);
+		color: var(--color-slate-900);
+		line-height: 1.6;
+	}
+
+	/* Fluid typography scale */
+	h1 {
+		font-size: clamp(1.75rem, 4vw, 2.25rem);
+		font-weight: 700;
+		letter-spacing: -0.025em;
+		line-height: 1.2;
+	}
+
+	h2 {
+		font-size: clamp(1.5rem, 3vw, 1.875rem);
+		font-weight: 600;
+		letter-spacing: -0.02em;
+		line-height: 1.3;
+	}
+
+	h3 {
+		font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+		font-weight: 600;
+		letter-spacing: -0.015em;
+		line-height: 1.4;
+	}
+
+	h4 {
+		font-size: clamp(1.125rem, 2vw, 1.25rem);
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		line-height: 1.4;
+	}
+
+	p {
+		font-size: clamp(0.9375rem, 1.5vw, 1rem);
+		line-height: 1.7;
+	}
+
+	/* Smooth focus states */
+	:focus-visible {
+		outline: 2px solid var(--color-brand-500);
+		outline-offset: 2px;
+	}
+
+	/* Selection color */
+	::selection {
+		background-color: oklch(0.93 0.04 240);
+		color: var(--color-brand-900);
+	}
+}
+
+@layer utilities {
+	/* Animation utilities */
+	.animate-in {
+		animation: animateIn 0.5s var(--ease-out-expo) forwards;
+		opacity: 0;
+	}
+
+	.animate-in-delay-1 {
+		animation: animateIn 0.5s var(--ease-out-expo) 0.1s forwards;
+		opacity: 0;
+	}
+
+	.animate-in-delay-2 {
+		animation: animateIn 0.5s var(--ease-out-expo) 0.2s forwards;
+		opacity: 0;
+	}
+
+	.animate-in-delay-3 {
+		animation: animateIn 0.5s var(--ease-out-expo) 0.3s forwards;
+		opacity: 0;
+	}
+
+	.slide-up {
+		animation: slideUp 0.6s var(--ease-out-expo) forwards;
+		opacity: 0;
+		transform: translateY(12px);
+	}
+
+	.slide-up-delay-1 {
+		animation: slideUp 0.6s var(--ease-out-expo) 0.1s forwards;
+		opacity: 0;
+		transform: translateY(12px);
+	}
+
+	.slide-up-delay-2 {
+		animation: slideUp 0.6s var(--ease-out-expo) 0.2s forwards;
+		opacity: 0;
+		transform: translateY(12px);
+	}
+
+	.fade-in {
+		animation: fadeIn 0.4s var(--ease-out-quart) forwards;
+	}
+
+	.scale-in {
+		animation: scaleIn 0.3s var(--ease-spring) forwards;
+		transform-origin: center;
+	}
+
+	/* Hover lift effect */
+	.hover-lift {
+		transition: transform 0.3s var(--ease-out-quart), box-shadow 0.3s var(--ease-out-quart);
+	}
+
+	.hover-lift:hover {
+		transform: translateY(-2px);
+		box-shadow: var(--shadow-lg);
+	}
+
+	/* Subtle pulse for status indicators */
+	.pulse-soft {
+		animation: pulse 2s var(--ease-in-out-quint) infinite;
+	}
+
+	/* Shimmer loading effect */
+	.shimmer {
+		background: linear-gradient(
+			90deg,
+			oklch(0.94 0.008 180) 0%,
+			oklch(0.97 0.005 180) 50%,
+			oklch(0.94 0.008 180) 100%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+	}
+}
+
+@keyframes animateIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes slideUp {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes scaleIn {
+	from {
+		opacity: 0;
+		transform: scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes pulse {
+	0%, 100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.6;
+	}
+}
+
+@keyframes shimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
 	}
 }
