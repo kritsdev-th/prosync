@@ -715,7 +715,7 @@ The roles.permissions column in the database MUST strictly follow this JSON obje
 Since this is a government system handling sensitive PDFs, the file upload mechanism must be standardized.
 
 - Upload Contracts:
-  - Storage Provider: S3-compatible storage (e.g., MinIO or AWS S3). DO NOT save files to the local file system.
+  - Storage Provider: S3-compatible storage (MinIO). DO NOT save files to the local file system.
   - File Validation: - Strict MIME Type checking: application/pdf ONLY.
   - Size Limit: Maximum 20MB per file.
   - URL Pattern: Files must be stored and referenced in the DB using this exact path structure:
