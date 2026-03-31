@@ -129,19 +129,19 @@
 			<div class="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
 				<div class="rounded-xl border bg-white p-4">
 					<p class="text-xs text-gray-500">คาดการณ์รายรับ</p>
-					<p class="mt-1 text-lg font-bold text-green-600">{formatBaht(activeFy.total_estimated_income)}</p>
+					<p class="mt-1 text-lg font-bold text-green-600">{formatBaht(String(activeFy.total_estimated_income))}</p>
 				</div>
 				<div class="rounded-xl border bg-white p-4">
 					<p class="text-xs text-gray-500">คาดการณ์รายจ่าย</p>
-					<p class="mt-1 text-lg font-bold text-red-600">{formatBaht(activeFy.total_estimated_expense)}</p>
+					<p class="mt-1 text-lg font-bold text-red-600">{formatBaht(String(activeFy.total_estimated_expense))}</p>
 				</div>
 				<div class="rounded-xl border bg-white p-4">
 					<p class="text-xs text-gray-500">รายรับจริง</p>
-					<p class="mt-1 text-lg font-bold text-green-700">{formatBaht(activeFy.total_actual_income)}</p>
+					<p class="mt-1 text-lg font-bold text-green-700">{formatBaht(String(activeFy.total_actual_income))}</p>
 				</div>
 				<div class="rounded-xl border bg-white p-4">
 					<p class="text-xs text-gray-500">รายจ่ายจริง</p>
-					<p class="mt-1 text-lg font-bold text-red-700">{formatBaht(activeFy.total_actual_expense)}</p>
+					<p class="mt-1 text-lg font-bold text-red-700">{formatBaht(String(activeFy.total_actual_expense))}</p>
 				</div>
 			</div>
 		{/if}

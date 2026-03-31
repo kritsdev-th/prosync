@@ -3,6 +3,7 @@ import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { provinces } from '$lib/server/db/schema';
+import { provinceSchema, parseFormData } from '$lib/server/validation/schemas';
 
 export const load: PageServerLoad = async () => {
 	const allProvinces = await db.select().from(provinces).orderBy(provinces.name);
@@ -11,57 +12,40 @@ export const load: PageServerLoad = async () => {
 
 export const actions: Actions = {
 	create: async ({ request }) => {
-		const formData = await request.formData();
-		const name = formData.get('name')?.toString().trim() ?? '';
-
-		if (!name) {
-			return fail(400, {
-				success: false,
-				errors: { name: ['กรุณาระบุชื่อจังหวัด'] }
-			});
+		const parsed = parseFormData(provinceSchema, await request.formData());
+		if (!parsed.success) {
+			return fail(400, { success: false, errors: parsed.errors });
 		}
 
-		if (name.length > 100) {
-			return fail(400, {
-				success: false,
-				errors: { name: ['ชื่อจังหวัดต้องไม่เกิน 100 ตัวอักษร'] }
-			});
+		try {
+			await db.insert(provinces).values({ name: parsed.data.name });
+			return { success: true };
+		} catch (err) {
+			console.error('Create province error:', err);
+			return fail(500, { success: false, errors: { name: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
 		}
-
-		await db.insert(provinces).values({ name });
-
-		return { success: true };
 	},
 
 	update: async ({ request }) => {
 		const formData = await request.formData();
 		const id = Number(formData.get('id'));
-		const name = formData.get('name')?.toString().trim() ?? '';
 
 		if (!id || isNaN(id)) {
-			return fail(400, {
-				success: false,
-				errors: { id: ['ไม่พบรหัสจังหวัด'] }
-			});
+			return fail(400, { success: false, errors: { id: ['ไม่พบรหัสจังหวัด'] } });
 		}
 
-		if (!name) {
-			return fail(400, {
-				success: false,
-				errors: { name: ['กรุณาระบุชื่อจังหวัด'] }
-			});
+		const parsed = parseFormData(provinceSchema, formData);
+		if (!parsed.success) {
+			return fail(400, { success: false, errors: parsed.errors });
 		}
 
-		if (name.length > 100) {
-			return fail(400, {
-				success: false,
-				errors: { name: ['ชื่อจังหวัดต้องไม่เกิน 100 ตัวอักษร'] }
-			});
+		try {
+			await db.update(provinces).set({ name: parsed.data.name }).where(eq(provinces.id, id));
+			return { success: true };
+		} catch (err) {
+			console.error('Update province error:', err);
+			return fail(500, { success: false, errors: { name: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
 		}
-
-		await db.update(provinces).set({ name }).where(eq(provinces.id, id));
-
-		return { success: true };
 	},
 
 	delete: async ({ request }) => {
@@ -69,14 +53,15 @@ export const actions: Actions = {
 		const id = Number(formData.get('id'));
 
 		if (!id || isNaN(id)) {
-			return fail(400, {
-				success: false,
-				errors: { id: ['ไม่พบรหัสจังหวัด'] }
-			});
+			return fail(400, { success: false, errors: { id: ['ไม่พบรหัสจังหวัด'] } });
 		}
 
-		await db.delete(provinces).where(eq(provinces.id, id));
-
-		return { success: true };
+		try {
+			await db.delete(provinces).where(eq(provinces.id, id));
+			return { success: true };
+		} catch (err) {
+			console.error('Delete province error:', err);
+			return fail(500, { success: false, errors: { id: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
 	}
 };

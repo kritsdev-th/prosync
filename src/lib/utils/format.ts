@@ -77,14 +77,14 @@ export const STATUS_LABELS: Record<string, string> = {
 export function exportToCsv(
 	filename: string,
 	headers: { key: string; label: string }[],
-	data: Record<string, unknown>[]
+	data: readonly Record<string, unknown>[] | readonly object[]
 ): void {
 	const BOM = '\uFEFF'; // UTF-8 BOM for Thai text in Excel
 	const headerRow = headers.map((h) => `"${h.label}"`).join(',');
 	const rows = data.map((row) =>
 		headers
 			.map((h) => {
-				const val = row[h.key];
+				const val = (row as Record<string, unknown>)[h.key];
 				if (val === null || val === undefined) return '""';
 				const str = String(val).replace(/"/g, '""');
 				return `"${str}"`;

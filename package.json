@@ -18,6 +18,7 @@
     "@sveltejs/kit": "^2.21.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^25.5.0",
     "drizzle-kit": "^0.31.0",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",

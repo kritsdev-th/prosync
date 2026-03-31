@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { agencies, provinces } from '$lib/server/db/schema';
 import type { Actions, PageServerLoad } from './$types';
+import { createAgencySchema, updateAgencySchema, parseFormData } from '$lib/server/validation/schemas';
 
 export const load: PageServerLoad = async () => {
 	const agencyList = await db
@@ -18,10 +19,7 @@ export const load: PageServerLoad = async () => {
 		.orderBy(agencies.name);
 
 	const provinceList = await db
-		.select({
-			id: provinces.id,
-			name: provinces.name
-		})
+		.select({ id: provinces.id, name: provinces.name })
 		.from(provinces)
 		.orderBy(provinces.name);
 
@@ -30,47 +28,34 @@ export const load: PageServerLoad = async () => {
 
 export const actions: Actions = {
 	create: async ({ request }) => {
-		const formData = await request.formData();
-		const name = formData.get('name')?.toString().trim();
-		const agency_type = formData.get('agency_type')?.toString().trim();
-		const province_id = Number(formData.get('province_id'));
-
-		if (!name) {
-			return fail(400, { error: 'กรุณากรอกชื่อหน่วยงาน', name, agency_type, province_id });
-		}
-		if (!agency_type) {
-			return fail(400, { error: 'กรุณาเลือกประเภทหน่วยงาน', name, agency_type, province_id });
-		}
-		if (!province_id || isNaN(province_id)) {
-			return fail(400, { error: 'กรุณาเลือกจังหวัด', name, agency_type, province_id });
+		const parsed = parseFormData(createAgencySchema, await request.formData());
+		if (!parsed.success) {
+			return fail(400, { error: Object.values(parsed.errors)[0]?.[0] || 'ข้อมูลไม่ถูกต้อง' });
 		}
 
-		await db.insert(agencies).values({ name, agency_type, province_id });
-		return { success: true };
+		try {
+			await db.insert(agencies).values(parsed.data);
+			return { success: true };
+		} catch (err) {
+			console.error('Create agency error:', err);
+			return fail(500, { error: 'เกิดข้อผิดพลาด กรุณาลองใหม่' });
+		}
 	},
 
 	update: async ({ request }) => {
-		const formData = await request.formData();
-		const id = Number(formData.get('id'));
-		const name = formData.get('name')?.toString().trim();
-		const agency_type = formData.get('agency_type')?.toString().trim();
-		const province_id = Number(formData.get('province_id'));
-
-		if (!id || isNaN(id)) {
-			return fail(400, { error: 'ไม่พบหน่วยงานที่ต้องการแก้ไข' });
-		}
-		if (!name) {
-			return fail(400, { error: 'กรุณากรอกชื่อหน่วยงาน' });
-		}
-		if (!agency_type) {
-			return fail(400, { error: 'กรุณาเลือกประเภทหน่วยงาน' });
-		}
-		if (!province_id || isNaN(province_id)) {
-			return fail(400, { error: 'กรุณาเลือกจังหวัด' });
+		const parsed = parseFormData(updateAgencySchema, await request.formData());
+		if (!parsed.success) {
+			return fail(400, { error: Object.values(parsed.errors)[0]?.[0] || 'ข้อมูลไม่ถูกต้อง' });
 		}
 
-		await db.update(agencies).set({ name, agency_type, province_id }).where(eq(agencies.id, id));
-		return { success: true };
+		try {
+			const { id, ...data } = parsed.data;
+			await db.update(agencies).set(data).where(eq(agencies.id, id));
+			return { success: true };
+		} catch (err) {
+			console.error('Update agency error:', err);
+			return fail(500, { error: 'เกิดข้อผิดพลาด กรุณาลองใหม่' });
+		}
 	},
 
 	delete: async ({ request }) => {
@@ -81,7 +66,12 @@ export const actions: Actions = {
 			return fail(400, { error: 'ไม่พบหน่วยงานที่ต้องการลบ' });
 		}
 
-		await db.delete(agencies).where(eq(agencies.id, id));
-		return { success: true };
+		try {
+			await db.delete(agencies).where(eq(agencies.id, id));
+			return { success: true };
+		} catch (err) {
+			console.error('Delete agency error:', err);
+			return fail(500, { error: 'เกิดข้อผิดพลาด กรุณาลองใหม่' });
+		}
 	}
 };

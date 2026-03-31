@@ -3,7 +3,6 @@ import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import {
 	dikaVouchers,
-	documents,
 	vendors,
 	plans,
 	bankAccounts,
@@ -12,8 +11,30 @@ import {
 	agencies,
 	bank
 } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { writeAuditLog } from '$lib/server/db/audit';
+import { approveDikaSchema, createBankAccountSchema, parseFormData } from '$lib/server/validation/schemas';
+
+interface DikaRow {
+	id: number;
+	document_id: number;
+	vendor_name: string;
+	plan_title: string;
+	gross_amount: string;
+	fine_amount: string;
+	tax_amount: string;
+	net_amount: string;
+	status: string;
+}
+
+interface BankAccountRow {
+	id: number;
+	account_name: string;
+	account_number: string;
+	balance: string;
+	is_tax_pool: boolean;
+	bank_name: string;
+}
 
 export const load: PageServerLoad = async ({ parent, url }) => {
 	const { user } = await parent();
@@ -21,10 +42,10 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 		? Number(url.searchParams.get('agency_id')) || null
 		: user.agency_id;
 
-	let dikaList: any[] = [];
-	let accountList: any[] = [];
-	let agencyList: any[] = [];
-	let taxList: any[] = [];
+	let dikaList: DikaRow[] = [];
+	let accountList: BankAccountRow[] = [];
+	let agencyList: typeof agencies.$inferSelect[] = [];
+	let taxList: typeof taxTransactions.$inferSelect[] = [];
 
 	if (user.is_super_admin) {
 		agencyList = await db.select().from(agencies);
@@ -79,123 +100,118 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 
 export const actions: Actions = {
 	approveDika: async ({ request, locals, getClientAddress }) => {
-		const form = await request.formData();
-		const dikaId = Number(form.get('dika_id'));
-		const action = form.get('action') as string; // 'examine' or 'pay'
-
-		const [dika] = await db.select().from(dikaVouchers).where(eq(dikaVouchers.id, dikaId));
-		if (!dika) return fail(404, { success: false, errors: { dika_id: ['ไม่พบฎีกา'] } });
-
-		if (action === 'examine') {
-			await db
-				.update(dikaVouchers)
-				.set({ status: 'PENDING_EXAMINE', examiner_id: locals.user!.sub })
-				.where(eq(dikaVouchers.id, dikaId));
-			return { success: true, message: 'ตรวจสอบฎีกาสำเร็จ' };
+		const parsed = parseFormData(approveDikaSchema, await request.formData());
+		if (!parsed.success) {
+			return fail(400, { success: false, errors: parsed.errors });
 		}
 
-		if (action === 'pay') {
-			// Use transaction for atomic operation
-			await db.transaction(async (tx) => {
-				// Update dika status
-				await tx
+		try {
+			const { dika_id, action } = parsed.data;
+			const [dika] = await db.select().from(dikaVouchers).where(eq(dikaVouchers.id, dika_id));
+			if (!dika) return fail(404, { success: false, errors: { dika_id: ['ไม่พบฎีกา'] } });
+
+			if (action === 'examine') {
+				await db
 					.update(dikaVouchers)
-					.set({ status: 'PAID', director_id: locals.user!.sub })
-					.where(eq(dikaVouchers.id, dikaId));
-
-				// Create bank transaction (OUT - payment to vendor)
-				await tx.insert(bankTransactions).values({
-					bank_account_id: dika.payment_bank_account_id,
-					transaction_type: 'OUT',
-					amount: dika.net_amount,
-					plan_id: dika.plan_id,
-					dika_voucher_id: dikaId,
-					action_by_user_id: locals.user!.sub,
-					tags: { vendor_id: dika.vendor_id }
-				});
-
-				// If there's tax, move it to tax pool
-				if (Number(dika.tax_amount) > 0 && dika.tax_pool_account_id) {
-					await tx.insert(bankTransactions).values({
-						bank_account_id: dika.tax_pool_account_id,
-						transaction_type: 'BORROW_TAX',
-						amount: dika.tax_amount,
-						plan_id: dika.plan_id,
-						dika_voucher_id: dikaId,
-						action_by_user_id: locals.user!.sub,
-						tags: { type: 'tax_withholding' }
-					});
-
-					// Get vendor tax_id
-					const [vendor] = await tx
-						.select()
-						.from(vendors)
-						.where(eq(vendors.id, dika.vendor_id));
-
-					// Create tax transaction record
-					await tx.insert(taxTransactions).values({
-						agency_id: dika.agency_id,
-						dika_voucher_id: dikaId,
-						vendor_id: dika.vendor_id,
-						tax_id: vendor?.tax_id || '',
-						tax_rate: '1.00',
-						tax_base_amount: dika.gross_amount,
-						tax_amount: dika.tax_amount,
-						tax_form_type: 'ภ.ง.ด.53',
-						status: 'WITHHELD'
-					});
-				}
-			});
-
-			// Audit trail
-			if (locals.user) {
-				await writeAuditLog({
-					collection: 'bank_transaction_histories',
-					action_type: 'SYSTEM_SETTLE',
-					agency_id: dika.agency_id,
-					bank_transaction_id: dikaId,
-					amount_change: { old: 0, new: Number(dika.net_amount) },
-					action_by: {
-						user_id: locals.user.sub,
-						name: locals.user.name,
-						ip_address: getClientAddress()
-					}
-				});
+					.set({ status: 'PENDING_EXAMINE', examiner_id: locals.user!.sub })
+					.where(eq(dikaVouchers.id, dika_id));
+				return { success: true, message: 'ตรวจสอบฎีกาสำเร็จ' };
 			}
 
-			return { success: true, message: 'อนุมัติจ่ายเงินสำเร็จ' };
-		}
+			if (action === 'pay') {
+				await db.transaction(async (tx) => {
+					await tx
+						.update(dikaVouchers)
+						.set({ status: 'PAID', director_id: locals.user!.sub })
+						.where(eq(dikaVouchers.id, dika_id));
 
-		if (action === 'reject') {
-			await db
-				.update(dikaVouchers)
-				.set({ status: 'REJECTED' })
-				.where(eq(dikaVouchers.id, dikaId));
-			return { success: true, message: 'ปฏิเสธฎีกาแล้ว' };
+					await tx.insert(bankTransactions).values({
+						bank_account_id: dika.payment_bank_account_id,
+						transaction_type: 'OUT',
+						amount: dika.net_amount,
+						plan_id: dika.plan_id,
+						dika_voucher_id: dika_id,
+						action_by_user_id: locals.user!.sub,
+						tags: { vendor_id: dika.vendor_id }
+					});
+
+					if (Number(dika.tax_amount) > 0 && dika.tax_pool_account_id) {
+						await tx.insert(bankTransactions).values({
+							bank_account_id: dika.tax_pool_account_id,
+							transaction_type: 'BORROW_TAX',
+							amount: dika.tax_amount,
+							plan_id: dika.plan_id,
+							dika_voucher_id: dika_id,
+							action_by_user_id: locals.user!.sub,
+							tags: { type: 'tax_withholding' }
+						});
+
+						const [vendor] = await tx
+							.select()
+							.from(vendors)
+							.where(eq(vendors.id, dika.vendor_id));
+
+						await tx.insert(taxTransactions).values({
+							agency_id: dika.agency_id,
+							dika_voucher_id: dika_id,
+							vendor_id: dika.vendor_id,
+							tax_id: vendor?.tax_id || '',
+							tax_rate: '1.00',
+							tax_base_amount: dika.gross_amount,
+							tax_amount: dika.tax_amount,
+							tax_form_type: 'ภ.ง.ด.53',
+							status: 'WITHHELD'
+						});
+					}
+				});
+
+				if (locals.user) {
+					await writeAuditLog({
+						collection: 'bank_transaction_histories',
+						action_type: 'SYSTEM_SETTLE',
+						agency_id: dika.agency_id,
+						bank_transaction_id: dika_id,
+						amount_change: { old: 0, new: Number(dika.net_amount) },
+						action_by: {
+							user_id: locals.user.sub,
+							name: locals.user.name,
+							ip_address: getClientAddress()
+						}
+					});
+				}
+
+				return { success: true, message: 'อนุมัติจ่ายเงินสำเร็จ' };
+			}
+
+			if (action === 'reject') {
+				await db
+					.update(dikaVouchers)
+					.set({ status: 'REJECTED' })
+					.where(eq(dikaVouchers.id, dika_id));
+				return { success: true, message: 'ปฏิเสธฎีกาแล้ว' };
+			}
+		} catch (err) {
+			console.error('Approve dika error:', err);
+			return fail(500, { success: false, errors: { dika_id: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
 		}
 	},
 
 	createBankAccount: async ({ request }) => {
-		const form = await request.formData();
-		const agency_id = Number(form.get('agency_id'));
-		const bank_id = Number(form.get('bank_id'));
-		const account_name = form.get('account_name') as string;
-		const account_number = form.get('account_number') as string;
-		const is_tax_pool = form.get('is_tax_pool') === 'true';
-
-		if (!account_name || !account_number || !bank_id) {
-			return fail(400, { success: false, errors: { account_name: ['กรุณากรอกข้อมูลให้ครบ'] } });
+		const parsed = parseFormData(createBankAccountSchema, await request.formData());
+		if (!parsed.success) {
+			return fail(400, { success: false, errors: parsed.errors });
 		}
 
-		await db.insert(bankAccounts).values({
-			agency_id,
-			bank_id,
-			account_name,
-			account_number,
-			balance: '0',
-			is_tax_pool
-		});
+		try {
+			await db.insert(bankAccounts).values({
+				...parsed.data,
+				balance: '0'
+			});
 
-		return { success: true, message: 'สร้างบัญชีธนาคารสำเร็จ' };
+			return { success: true, message: 'สร้างบัญชีธนาคารสำเร็จ' };
+		} catch (err) {
+			console.error('Create bank account error:', err);
+			return fail(500, { success: false, errors: { account_name: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
 	}
 };

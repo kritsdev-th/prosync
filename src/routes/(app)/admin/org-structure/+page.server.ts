@@ -2,11 +2,10 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { orgUnits, users, agencies } from '$lib/server/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
+import { createOrgUnitSchema, updateOrgUnitSchema, parseFormData } from '$lib/server/validation/schemas';
 
-export const load: PageServerLoad = async ({ parent }) => {
-	const { user } = await parent();
-
+export const load: PageServerLoad = async () => {
 	const units = await db
 		.select({
 			id: orgUnits.id,
@@ -30,55 +29,64 @@ export const load: PageServerLoad = async ({ parent }) => {
 
 export const actions: Actions = {
 	create: async ({ request }) => {
-		const form = await request.formData();
-		const name = form.get('name') as string;
-		const agency_id = Number(form.get('agency_id'));
-		const parent_id = form.get('parent_id') as string;
-		const head_of_unit_id = form.get('head_of_unit_id') as string;
-
-		if (!name || !agency_id) {
-			return fail(400, { success: false, errors: { name: ['กรุณากรอกข้อมูลให้ครบถ้วน'] } });
+		const parsed = parseFormData(createOrgUnitSchema, await request.formData());
+		if (!parsed.success) {
+			return fail(400, { success: false, errors: parsed.errors });
 		}
 
-		await db.insert(orgUnits).values({
-			name,
-			agency_id,
-			parent_id: parent_id ? Number(parent_id) : null,
-			head_of_unit_id: head_of_unit_id ? Number(head_of_unit_id) : null
-		});
+		try {
+			await db.insert(orgUnits).values({
+				name: parsed.data.name,
+				agency_id: parsed.data.agency_id,
+				parent_id: parsed.data.parent_id ?? null,
+				head_of_unit_id: parsed.data.head_of_unit_id ?? null
+			});
 
-		return { success: true, message: 'สร้างแผนกสำเร็จ' };
+			return { success: true, message: 'สร้างแผนกสำเร็จ' };
+		} catch (err) {
+			console.error('Create org unit error:', err);
+			return fail(500, { success: false, errors: { name: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
 	},
 
 	update: async ({ request }) => {
-		const form = await request.formData();
-		const id = Number(form.get('id'));
-		const name = form.get('name') as string;
-		const parent_id = form.get('parent_id') as string;
-		const head_of_unit_id = form.get('head_of_unit_id') as string;
-
-		if (!name) {
-			return fail(400, { success: false, errors: { name: ['กรุณากรอกชื่อ'] } });
+		const parsed = parseFormData(updateOrgUnitSchema, await request.formData());
+		if (!parsed.success) {
+			return fail(400, { success: false, errors: parsed.errors });
 		}
 
-		await db
-			.update(orgUnits)
-			.set({
-				name,
-				parent_id: parent_id ? Number(parent_id) : null,
-				head_of_unit_id: head_of_unit_id ? Number(head_of_unit_id) : null
-			})
-			.where(eq(orgUnits.id, id));
+		try {
+			const { id, name, parent_id, head_of_unit_id } = parsed.data;
+			await db
+				.update(orgUnits)
+				.set({
+					name,
+					parent_id: parent_id ?? null,
+					head_of_unit_id: head_of_unit_id ?? null
+				})
+				.where(eq(orgUnits.id, id));
 
-		return { success: true, message: 'แก้ไขแผนกสำเร็จ' };
+			return { success: true, message: 'แก้ไขแผนกสำเร็จ' };
+		} catch (err) {
+			console.error('Update org unit error:', err);
+			return fail(500, { success: false, errors: { name: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
 	},
 
 	delete: async ({ request }) => {
 		const form = await request.formData();
 		const id = Number(form.get('id'));
 
-		await db.delete(orgUnits).where(eq(orgUnits.id, id));
+		if (!id || isNaN(id)) {
+			return fail(400, { success: false, errors: { id: ['ไม่พบแผนก'] } });
+		}
 
-		return { success: true, message: 'ลบแผนกสำเร็จ' };
+		try {
+			await db.delete(orgUnits).where(eq(orgUnits.id, id));
+			return { success: true, message: 'ลบแผนกสำเร็จ' };
+		} catch (err) {
+			console.error('Delete org unit error:', err);
+			return fail(500, { success: false, errors: { id: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
 	}
 };

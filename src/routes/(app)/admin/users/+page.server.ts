@@ -1,60 +1,39 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import {
-	users,
-	userAssignments,
-	roles,
-	orgUnits,
-	agencies
-} from '$lib/server/db/schema';
+import { users, userAssignments, roles, orgUnits, agencies } from '$lib/server/db/schema';
 import { eq, and, isNull, like, or } from 'drizzle-orm';
 import { hashPassword } from '$lib/server/auth/password';
+import {
+	createUserSchema,
+	updateUserSchema,
+	assignRoleSchema,
+	parseFormData
+} from '$lib/server/validation/schemas';
 
 export const load: PageServerLoad = async ({ url }) => {
 	const search = url.searchParams.get('search') || '';
 
-	let userList;
-	if (search) {
-		userList = await db
-			.select({
-				id: users.id,
-				name: users.name,
-				id_card: users.id_card,
-				position: users.position,
-				position_rank: users.position_rank,
-				email: users.email,
-				agency_id: users.agency_id,
-				agency_name: agencies.name,
-				is_super_admin: users.is_super_admin
-			})
-			.from(users)
-			.leftJoin(agencies, eq(users.agency_id, agencies.id))
-			.where(
-				and(
-					isNull(users.deleted_at),
-					or(like(users.name, `%${search}%`), like(users.id_card, `%${search}%`))
-				)
-			);
-	} else {
-		userList = await db
-			.select({
-				id: users.id,
-				name: users.name,
-				id_card: users.id_card,
-				position: users.position,
-				position_rank: users.position_rank,
-				email: users.email,
-				agency_id: users.agency_id,
-				agency_name: agencies.name,
-				is_super_admin: users.is_super_admin
-			})
-			.from(users)
-			.leftJoin(agencies, eq(users.agency_id, agencies.id))
-			.where(isNull(users.deleted_at));
-	}
+	const searchCondition = search
+		? and(isNull(users.deleted_at), or(like(users.name, `%${search}%`), like(users.id_card, `%${search}%`)))
+		: isNull(users.deleted_at);
 
-	// Get assignments for each user
+	const userList = await db
+		.select({
+			id: users.id,
+			name: users.name,
+			id_card: users.id_card,
+			position: users.position,
+			position_rank: users.position_rank,
+			email: users.email,
+			agency_id: users.agency_id,
+			agency_name: agencies.name,
+			is_super_admin: users.is_super_admin
+		})
+		.from(users)
+		.leftJoin(agencies, eq(users.agency_id, agencies.id))
+		.where(searchCondition);
+
 	const allAssignments = await db
 		.select({
 			id: userAssignments.id,
@@ -73,113 +52,132 @@ export const load: PageServerLoad = async ({ url }) => {
 	const allOrgUnits = await db.select().from(orgUnits);
 	const allAgencies = await db.select().from(agencies);
 
-	return { users: userList, assignments: allAssignments, roles: allRoles, orgUnits: allOrgUnits, agencies: allAgencies, search };
+	return {
+		users: userList,
+		assignments: allAssignments,
+		roles: allRoles,
+		orgUnits: allOrgUnits,
+		agencies: allAgencies,
+		search
+	};
 };
 
 export const actions: Actions = {
 	create: async ({ request }) => {
-		const form = await request.formData();
-		const name = form.get('name') as string;
-		const id_card = form.get('id_card') as string;
-		const password = form.get('password') as string;
-		const agency_id = form.get('agency_id') as string;
-		const position = form.get('position') as string;
-		const position_rank = form.get('position_rank') as string;
-		const email = form.get('email') as string;
-
-		if (!name || !id_card || !password) {
-			return fail(400, { success: false, errors: { name: ['กรุณากรอกข้อมูลให้ครบถ้วน'] } });
-		}
-		if (!/^\d{13}$/.test(id_card)) {
-			return fail(400, { success: false, errors: { id_card: ['เลขบัตรประชาชนต้องเป็น 13 หลัก'] } });
+		const parsed = parseFormData(createUserSchema, await request.formData());
+		if (!parsed.success) {
+			return fail(400, { success: false, errors: parsed.errors });
 		}
 
-		const password_hash = await hashPassword(password);
-		await db.insert(users).values({
-			name,
-			id_card,
-			password_hash,
-			agency_id: agency_id ? Number(agency_id) : null,
-			position: position || null,
-			position_rank: position_rank || null,
-			email: email || null
-		});
+		try {
+			const { name, id_card, password, agency_id, position, position_rank, email } = parsed.data;
+			const password_hash = await hashPassword(password);
 
-		return { success: true, message: 'สร้างผู้ใช้งานสำเร็จ' };
+			await db.insert(users).values({
+				name,
+				id_card,
+				password_hash,
+				agency_id: agency_id ?? null,
+				position: position ?? null,
+				position_rank: position_rank ?? null,
+				email: email ?? null
+			});
+
+			return { success: true, message: 'สร้างผู้ใช้งานสำเร็จ' };
+		} catch (err) {
+			console.error('Create user error:', err);
+			return fail(500, { success: false, errors: { name: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
 	},
 
 	update: async ({ request }) => {
-		const form = await request.formData();
-		const id = Number(form.get('id'));
-		const name = form.get('name') as string;
-		const agency_id = form.get('agency_id') as string;
-		const position = form.get('position') as string;
-		const position_rank = form.get('position_rank') as string;
-		const email = form.get('email') as string;
-
-		if (!name) {
-			return fail(400, { success: false, errors: { name: ['กรุณากรอกชื่อ'] } });
+		const parsed = parseFormData(updateUserSchema, await request.formData());
+		if (!parsed.success) {
+			return fail(400, { success: false, errors: parsed.errors });
 		}
 
-		await db
-			.update(users)
-			.set({
-				name,
-				agency_id: agency_id ? Number(agency_id) : null,
-				position: position || null,
-				position_rank: position_rank || null,
-				email: email || null
-			})
-			.where(eq(users.id, id));
+		try {
+			const { id, name, agency_id, position, position_rank, email } = parsed.data;
 
-		return { success: true, message: 'แก้ไขผู้ใช้งานสำเร็จ' };
+			await db
+				.update(users)
+				.set({
+					name,
+					agency_id: agency_id ?? null,
+					position: position ?? null,
+					position_rank: position_rank ?? null,
+					email: email ?? null
+				})
+				.where(eq(users.id, id));
+
+			return { success: true, message: 'แก้ไขผู้ใช้งานสำเร็จ' };
+		} catch (err) {
+			console.error('Update user error:', err);
+			return fail(500, { success: false, errors: { name: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
 	},
 
 	delete: async ({ request }) => {
 		const form = await request.formData();
 		const id = Number(form.get('id'));
 
-		// Soft delete
-		await db.update(users).set({ deleted_at: new Date() }).where(eq(users.id, id));
+		if (!id || isNaN(id)) {
+			return fail(400, { success: false, errors: { id: ['ไม่พบผู้ใช้งาน'] } });
+		}
 
-		return { success: true, message: 'ลบผู้ใช้งานสำเร็จ' };
+		try {
+			await db.update(users).set({ deleted_at: new Date() }).where(eq(users.id, id));
+			return { success: true, message: 'ลบผู้ใช้งานสำเร็จ' };
+		} catch (err) {
+			console.error('Delete user error:', err);
+			return fail(500, { success: false, errors: { id: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
 	},
 
 	assign: async ({ request }) => {
-		const form = await request.formData();
-		const user_id = Number(form.get('user_id'));
-		const role_id = Number(form.get('role_id'));
-		const org_unit_id = Number(form.get('org_unit_id'));
-		const is_primary_unit = form.get('is_primary_unit') === 'true';
-
-		if (!user_id || !role_id || !org_unit_id) {
-			return fail(400, { success: false, errors: { role_id: ['กรุณาเลือกข้อมูลให้ครบ'] } });
+		const parsed = parseFormData(assignRoleSchema, await request.formData());
+		if (!parsed.success) {
+			return fail(400, { success: false, errors: parsed.errors });
 		}
 
-		// If setting as primary, unset other primary assignments for this user
-		if (is_primary_unit) {
-			await db
-				.update(userAssignments)
-				.set({ is_primary_unit: false })
-				.where(eq(userAssignments.user_id, user_id));
+		try {
+			const { user_id, role_id, org_unit_id, is_primary_unit } = parsed.data;
+
+			if (is_primary_unit) {
+				await db
+					.update(userAssignments)
+					.set({ is_primary_unit: false })
+					.where(eq(userAssignments.user_id, user_id));
+			}
+
+			await db.insert(userAssignments).values({
+				user_id,
+				role_id,
+				org_unit_id,
+				is_primary_unit
+			});
+
+			return { success: true, message: 'มอบหมายสิทธิ์สำเร็จ' };
+		} catch (err) {
+			console.error('Assign role error:', err);
+			return fail(500, { success: false, errors: { role_id: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
 		}
-
-		await db.insert(userAssignments).values({
-			user_id,
-			role_id,
-			org_unit_id,
-			is_primary_unit
-		});
-
-		return { success: true, message: 'มอบหมายสิทธิ์สำเร็จ' };
 	},
 
 	removeAssignment: async ({ request }) => {
 		const form = await request.formData();
 		const id = Number(form.get('id'));
 
-		await db.delete(userAssignments).where(eq(userAssignments.id, id));
+		if (!id || isNaN(id)) {
+			return fail(400, { success: false, errors: { id: ['ไม่พบสิทธิ์'] } });
+		}
 
-		return { success: true, message: 'ลบสิทธิ์สำเร็จ' };
+		try {
+			await db.delete(userAssignments).where(eq(userAssignments.id, id));
+			return { success: true, message: 'ลบสิทธิ์สำเร็จ' };
+		} catch (err) {
+			console.error('Remove assignment error:', err);
+			return fail(500, { success: false, errors: { id: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
 	}
 };

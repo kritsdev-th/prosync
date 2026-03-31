@@ -4,6 +4,8 @@ import { db } from '$lib/server/db';
 import { users, userAssignments, roles } from '$lib/server/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import type { JWTPayload } from '$lib/types/auth';
+import { mergePermissions } from '$lib/server/validation/types';
+import { dev } from '$app/environment';
 
 async function buildJWTPayload(userId: number): Promise<JWTPayload | null> {
 	const [user] = await db
@@ -19,15 +21,14 @@ async function buildJWTPayload(userId: number): Promise<JWTPayload | null> {
 
 	if (!user) return null;
 
-	// Merge permissions from all assignments
-	const merged = {
+	let primaryOrgUnitId: number | null = null;
+	let merged = {
 		can_manage_users: false,
 		can_manage_plans: false,
 		can_manage_procurement: false,
 		can_manage_finance: false,
 		can_view_audit_trail: false
 	};
-	let primaryOrgUnitId: number | null = null;
 
 	if (!user.is_super_admin) {
 		const assignments = await db
@@ -40,18 +41,9 @@ async function buildJWTPayload(userId: number): Promise<JWTPayload | null> {
 			.innerJoin(roles, eq(userAssignments.role_id, roles.id))
 			.where(eq(userAssignments.user_id, userId));
 
-		for (const a of assignments) {
-			if (a.is_primary_unit) primaryOrgUnitId = a.org_unit_id;
-			const p = a.permissions as Record<string, Record<string, boolean>>;
-			if (p.system?.can_manage_users) merged.can_manage_users = true;
-			if (p.planning?.can_create_plan || p.planning?.can_edit_plan)
-				merged.can_manage_plans = true;
-			if (p.procurement?.can_create_document || p.procurement?.can_approve_document)
-				merged.can_manage_procurement = true;
-			if (p.finance?.can_create_dika || p.finance?.can_approve_dika)
-				merged.can_manage_finance = true;
-			if (p.audit?.can_view_audit_trail) merged.can_view_audit_trail = true;
-		}
+		const result = mergePermissions(assignments);
+		merged = result.permissions;
+		primaryOrgUnitId = result.primaryOrgUnitId;
 	}
 
 	return {
@@ -88,13 +80,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 			const jwtPayload = await buildJWTPayload(refreshPayload.sub);
 			if (jwtPayload) {
 				const newAccessToken = await signAccessToken(jwtPayload);
-				const isProduction = process.env.NODE_ENV === 'production';
 				event.cookies.set('accessToken', newAccessToken, {
 					path: '/',
 					httpOnly: true,
-					secure: isProduction,
+					secure: !dev,
 					sameSite: 'lax',
-					maxAge: 60 * 15 // 15 min
+					maxAge: 60 * 15
 				});
 				event.locals.user = jwtPayload;
 			}

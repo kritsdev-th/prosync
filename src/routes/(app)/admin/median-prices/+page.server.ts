@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { medianPrices, provinces } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { createMedianPriceSchema, updateMedianPriceSchema, parseFormData } from '$lib/server/validation/schemas';
 
 export const load: PageServerLoad = async () => {
 	const prices = await db
@@ -25,50 +26,50 @@ export const load: PageServerLoad = async () => {
 
 export const actions: Actions = {
 	create: async ({ request }) => {
-		const form = await request.formData();
-		const category = form.get('category') as string;
-		const item_name = form.get('item_name') as string;
-		const price = form.get('price') as string;
-		const province_id = Number(form.get('province_id'));
-		const effective_date = form.get('effective_date') as string;
-
-		if (!category || !item_name || !price || !province_id || !effective_date) {
-			return fail(400, { success: false, errors: { category: ['กรุณากรอกข้อมูลให้ครบถ้วน'] } });
+		const parsed = parseFormData(createMedianPriceSchema, await request.formData());
+		if (!parsed.success) {
+			return fail(400, { success: false, errors: parsed.errors });
 		}
 
-		await db.insert(medianPrices).values({
-			category,
-			item_name,
-			price,
-			province_id,
-			effective_date
-		});
-
-		return { success: true, message: 'เพิ่มราคากลางสำเร็จ' };
+		try {
+			await db.insert(medianPrices).values(parsed.data);
+			return { success: true, message: 'เพิ่มราคากลางสำเร็จ' };
+		} catch (err) {
+			console.error('Create median price error:', err);
+			return fail(500, { success: false, errors: { category: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
 	},
 
 	update: async ({ request }) => {
-		const form = await request.formData();
-		const id = Number(form.get('id'));
-		const category = form.get('category') as string;
-		const item_name = form.get('item_name') as string;
-		const price = form.get('price') as string;
-		const effective_date = form.get('effective_date') as string;
+		const parsed = parseFormData(updateMedianPriceSchema, await request.formData());
+		if (!parsed.success) {
+			return fail(400, { success: false, errors: parsed.errors });
+		}
 
-		await db
-			.update(medianPrices)
-			.set({ category, item_name, price, effective_date })
-			.where(eq(medianPrices.id, id));
-
-		return { success: true, message: 'แก้ไขราคากลางสำเร็จ' };
+		try {
+			const { id, ...data } = parsed.data;
+			await db.update(medianPrices).set(data).where(eq(medianPrices.id, id));
+			return { success: true, message: 'แก้ไขราคากลางสำเร็จ' };
+		} catch (err) {
+			console.error('Update median price error:', err);
+			return fail(500, { success: false, errors: { category: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
 	},
 
 	delete: async ({ request }) => {
 		const form = await request.formData();
 		const id = Number(form.get('id'));
 
-		await db.delete(medianPrices).where(eq(medianPrices.id, id));
+		if (!id || isNaN(id)) {
+			return fail(400, { success: false, errors: { id: ['ไม่พบราคากลาง'] } });
+		}
 
-		return { success: true, message: 'ลบราคากลางสำเร็จ' };
+		try {
+			await db.delete(medianPrices).where(eq(medianPrices.id, id));
+			return { success: true, message: 'ลบราคากลางสำเร็จ' };
+		} catch (err) {
+			console.error('Delete median price error:', err);
+			return fail(500, { success: false, errors: { id: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
 	}
 };
