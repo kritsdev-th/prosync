@@ -154,6 +154,8 @@ export const plans = pgTable('plans', {
 	end_date: date('end_date'),
 	duration_text: varchar('duration_text', { length: 100 }),
 	expected_outputs: jsonb('expected_outputs'),
+	description: text('description'),
+	stakeholder_unit_ids: jsonb('stakeholder_unit_ids'),
 	is_leaf_node: boolean('is_leaf_node').notNull().default(false),
 	plan_type: varchar('plan_type', { length: 20 }).notNull(), // INCOME / EXPENSE
 	estimated_amount: numeric('estimated_amount', { precision: 15, scale: 2 })

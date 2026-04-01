@@ -203,6 +203,14 @@ const optionalDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบ
 	.nullable().optional()
 	.or(z.literal('').transform(() => null));
 
+const optionalIdList = z.string()
+	.transform((v) => {
+		if (!v || v.trim() === '') return null;
+		return v.split(',').map(Number).filter((n) => !isNaN(n) && n > 0);
+	})
+	.nullable().optional()
+	.or(z.literal('').transform(() => null));
+
 export const createPlanSchema = z.object({
 	agency_id: positiveId,
 	fiscal_year_id: positiveId,
@@ -212,6 +220,8 @@ export const createPlanSchema = z.object({
 	start_date: optionalDate,
 	end_date: optionalDate,
 	expected_outputs: optionalString,
+	description: optionalString,
+	stakeholder_unit_ids: optionalIdList,
 	plan_type: z.enum(planTypes, { message: 'กรุณาเลือกประเภทแผน' }),
 	is_leaf_node: z.enum(['true', 'false']).transform((v) => v === 'true').default('false'),
 	estimated_amount: monetaryAmount.default(0)
@@ -234,6 +244,8 @@ export const updatePlanSchema = z.object({
 	start_date: optionalDate,
 	end_date: optionalDate,
 	expected_outputs: optionalString,
+	description: optionalString,
+	stakeholder_unit_ids: optionalIdList,
 	is_leaf_node: z.enum(['true', 'false']).transform((v) => v === 'true').default('false'),
 	estimated_amount: monetaryAmount.default(0)
 }).refine(

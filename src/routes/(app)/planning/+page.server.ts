@@ -110,17 +110,25 @@ export const actions: Actions = {
 		}
 
 		try {
-			const { agency_id, fiscal_year_id, title, parent_id, responsible_unit_id, start_date, end_date, expected_outputs, plan_type, is_leaf_node, estimated_amount } = parsed.data;
+			const { agency_id, fiscal_year_id, title, parent_id, responsible_unit_id, start_date, end_date, expected_outputs, description, stakeholder_unit_ids, plan_type, is_leaf_node, estimated_amount } = parsed.data;
 
-			// Validate date range against parent plan
-			if (parent_id && (start_date || end_date)) {
+			// For sub-plans: inherit plan_type and responsible_unit_id from parent
+			let finalPlanType = plan_type;
+			let finalResponsibleUnitId = responsible_unit_id ?? null;
+			if (parent_id) {
 				const [parentPlan] = await db.select().from(plans).where(eq(plans.id, parent_id));
-				if (parentPlan?.start_date && parentPlan?.end_date) {
-					if (start_date && start_date < parentPlan.start_date) {
-						return fail(400, { success: false, errors: { start_date: [`วันที่เริ่มต้นต้องไม่ก่อน ${parentPlan.start_date} (วันเริ่มของแผนแม่)`] } });
-					}
-					if (end_date && end_date > parentPlan.end_date) {
-						return fail(400, { success: false, errors: { end_date: [`วันที่สิ้นสุดต้องไม่เกิน ${parentPlan.end_date} (วันสิ้นสุดของแผนแม่)`] } });
+				if (parentPlan) {
+					finalPlanType = parentPlan.plan_type as 'INCOME' | 'EXPENSE';
+					finalResponsibleUnitId = parentPlan.responsible_unit_id;
+
+					// Validate date range against parent plan
+					if (parentPlan.start_date && parentPlan.end_date) {
+						if (start_date && start_date < parentPlan.start_date) {
+							return fail(400, { success: false, errors: { start_date: [`วันที่เริ่มต้นต้องไม่ก่อน ${parentPlan.start_date} (วันเริ่มของแผนแม่)`] } });
+						}
+						if (end_date && end_date > parentPlan.end_date) {
+							return fail(400, { success: false, errors: { end_date: [`วันที่สิ้นสุดต้องไม่เกิน ${parentPlan.end_date} (วันสิ้นสุดของแผนแม่)`] } });
+						}
 					}
 				}
 			}
@@ -141,12 +149,14 @@ export const actions: Actions = {
 					fiscal_year_id,
 					title,
 					parent_id: parent_id ?? null,
-					responsible_unit_id: responsible_unit_id ?? null,
+					responsible_unit_id: finalResponsibleUnitId,
 					start_date: start_date ?? null,
 					end_date: end_date ?? null,
 					duration_text: calcDuration(start_date, end_date),
 					expected_outputs: parsedExpectedOutputs,
-					plan_type,
+					description: description ?? null,
+					stakeholder_unit_ids: stakeholder_unit_ids ?? null,
+					plan_type: finalPlanType,
 					is_leaf_node,
 					estimated_amount: finalEstimatedAmount
 				})
@@ -185,7 +195,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			const { id, title, responsible_unit_id, start_date, end_date, expected_outputs, estimated_amount, is_leaf_node } = parsed.data;
+			const { id, title, responsible_unit_id, start_date, end_date, expected_outputs, description, stakeholder_unit_ids, estimated_amount, is_leaf_node } = parsed.data;
 
 			const [oldPlan] = await db.select().from(plans).where(eq(plans.id, id));
 
@@ -202,6 +212,7 @@ export const actions: Actions = {
 				}
 			}
 
+			const isRootPlan = !oldPlan?.parent_id; // sub-plans inherit responsible_unit from parent
 			const finalEstimatedAmount = is_leaf_node ? (estimated_amount || '0') : '0';
 
 			let parsedExpectedOutputs = null;
@@ -213,11 +224,13 @@ export const actions: Actions = {
 				.update(plans)
 				.set({
 					title,
-					responsible_unit_id: responsible_unit_id ?? null,
+					responsible_unit_id: isRootPlan ? (responsible_unit_id ?? null) : undefined,
 					start_date: start_date ?? null,
 					end_date: end_date ?? null,
 					duration_text: calcDuration(start_date, end_date),
 					expected_outputs: parsedExpectedOutputs,
+					description: description ?? null,
+					stakeholder_unit_ids: stakeholder_unit_ids ?? null,
 					estimated_amount: finalEstimatedAmount,
 					is_leaf_node
 				})
