@@ -42,7 +42,7 @@ EXECUTE FUNCTION handle_bank_transaction();
 
 -- ══════════════════════════════════════════════
 -- Trigger 2: Bottom-Up Rollup
--- When a leaf node's actual_amount or estimated_amount changes,
+-- When a leaf node is inserted, updated, or deleted,
 -- recursively roll up the difference to all parent nodes
 -- and finally update fiscal_years totals
 -- ══════════════════════════════════════════════
@@ -56,13 +56,33 @@ DECLARE
     root_fiscal_year_id INTEGER;
     v_plan_type VARCHAR(20);
 BEGIN
-    -- Calculate difference
-    diff_actual := NEW.actual_amount - COALESCE(OLD.actual_amount, 0);
-    diff_estimated := NEW.estimated_amount - COALESCE(OLD.estimated_amount, 0);
+    IF TG_OP = 'DELETE' THEN
+        -- On delete: subtract the old values
+        diff_actual := -OLD.actual_amount;
+        diff_estimated := -OLD.estimated_amount;
+        current_parent_id := OLD.parent_id;
+        root_fiscal_year_id := OLD.fiscal_year_id;
+        v_plan_type := OLD.plan_type;
+    ELSIF TG_OP = 'INSERT' THEN
+        -- On insert: add the new values
+        diff_actual := NEW.actual_amount;
+        diff_estimated := NEW.estimated_amount;
+        current_parent_id := NEW.parent_id;
+        root_fiscal_year_id := NEW.fiscal_year_id;
+        v_plan_type := NEW.plan_type;
+    ELSE
+        -- On update: calculate difference
+        diff_actual := NEW.actual_amount - COALESCE(OLD.actual_amount, 0);
+        diff_estimated := NEW.estimated_amount - COALESCE(OLD.estimated_amount, 0);
+        current_parent_id := NEW.parent_id;
+        root_fiscal_year_id := NEW.fiscal_year_id;
+        v_plan_type := NEW.plan_type;
+    END IF;
 
-    current_parent_id := NEW.parent_id;
-    root_fiscal_year_id := NEW.fiscal_year_id;
-    v_plan_type := NEW.plan_type;
+    -- Skip if no change
+    IF diff_actual = 0 AND diff_estimated = 0 THEN
+        IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+    END IF;
 
     -- 1. Recursive Rollup using WHILE loop to climb the tree
     WHILE current_parent_id IS NOT NULL LOOP
@@ -86,13 +106,30 @@ BEGIN
         WHERE id = root_fiscal_year_id;
     END IF;
 
-    RETURN NEW;
+    IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
 END;
 $$ LANGUAGE plpgsql;
 
--- Attach trigger to plans table (only fires when leaf node updates)
-CREATE TRIGGER trigger_rollup_plan_budget
+-- Drop old trigger if exists (was UPDATE only)
+DROP TRIGGER IF EXISTS trigger_rollup_plan_budget ON plans;
+
+-- Attach trigger for INSERT (leaf nodes)
+CREATE TRIGGER trigger_rollup_plan_budget_insert
+AFTER INSERT ON plans
+FOR EACH ROW
+WHEN (NEW.is_leaf_node = true)
+EXECUTE FUNCTION rollup_plan_budget();
+
+-- Attach trigger for UPDATE (leaf nodes)
+CREATE TRIGGER trigger_rollup_plan_budget_update
 AFTER UPDATE OF actual_amount, estimated_amount ON plans
 FOR EACH ROW
 WHEN (NEW.is_leaf_node = true)
+EXECUTE FUNCTION rollup_plan_budget();
+
+-- Attach trigger for DELETE (leaf nodes)
+CREATE TRIGGER trigger_rollup_plan_budget_delete
+AFTER DELETE ON plans
+FOR EACH ROW
+WHEN (OLD.is_leaf_node = true)
 EXECUTE FUNCTION rollup_plan_budget();

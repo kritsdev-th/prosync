@@ -199,24 +199,52 @@ export type CreateFiscalYearInput = z.infer<typeof createFiscalYearSchema>;
 
 const planTypes = ['INCOME', 'EXPENSE'] as const;
 
+const optionalDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง')
+	.nullable().optional()
+	.or(z.literal('').transform(() => null));
+
 export const createPlanSchema = z.object({
 	agency_id: positiveId,
 	fiscal_year_id: positiveId,
 	title: requiredString('ชื่อแผน').pipe(z.string().max(255)),
 	parent_id: optionalId,
+	responsible_unit_id: optionalId,
+	start_date: optionalDate,
+	end_date: optionalDate,
+	expected_outputs: optionalString,
 	plan_type: z.enum(planTypes, { message: 'กรุณาเลือกประเภทแผน' }),
 	is_leaf_node: z.enum(['true', 'false']).transform((v) => v === 'true').default('false'),
 	estimated_amount: monetaryAmount.default(0)
-});
+}).refine(
+	(data) => {
+		if (data.start_date && data.end_date) {
+			return data.start_date <= data.end_date;
+		}
+		return true;
+	},
+	{ message: 'วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด', path: ['end_date'] }
+);
 
 export type CreatePlanInput = z.infer<typeof createPlanSchema>;
 
 export const updatePlanSchema = z.object({
 	id: positiveId,
 	title: requiredString('ชื่อแผน').pipe(z.string().max(255)),
+	responsible_unit_id: optionalId,
+	start_date: optionalDate,
+	end_date: optionalDate,
+	expected_outputs: optionalString,
 	is_leaf_node: z.enum(['true', 'false']).transform((v) => v === 'true').default('false'),
 	estimated_amount: monetaryAmount.default(0)
-});
+}).refine(
+	(data) => {
+		if (data.start_date && data.end_date) {
+			return data.start_date <= data.end_date;
+		}
+		return true;
+	},
+	{ message: 'วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด', path: ['end_date'] }
+);
 
 export type UpdatePlanInput = z.infer<typeof updatePlanSchema>;
 

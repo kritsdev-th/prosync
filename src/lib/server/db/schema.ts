@@ -149,6 +149,11 @@ export const plans = pgTable('plans', {
 		.references(() => fiscalYears.id),
 	title: varchar('title', { length: 255 }).notNull(),
 	parent_id: integer('parent_id'),
+	responsible_unit_id: integer('responsible_unit_id').references(() => orgUnits.id),
+	start_date: date('start_date'),
+	end_date: date('end_date'),
+	duration_text: varchar('duration_text', { length: 100 }),
+	expected_outputs: jsonb('expected_outputs'),
 	is_leaf_node: boolean('is_leaf_node').notNull().default(false),
 	plan_type: varchar('plan_type', { length: 20 }).notNull(), // INCOME / EXPENSE
 	estimated_amount: numeric('estimated_amount', { precision: 15, scale: 2 })

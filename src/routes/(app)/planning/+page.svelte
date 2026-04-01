@@ -8,6 +8,18 @@
 	let showFyModal = $state(false);
 	let editingPlan = $state<any>(null);
 	let creatingParentId = $state<number | null>(null);
+	let createIsLeaf = $state(false);
+	let editIsLeaf = $state(false);
+
+	// Get parent plan's date range for constraining child plan dates
+	function getParentPlan(parentId: number | null) {
+		if (!parentId) return null;
+		return data.plans.find((p: any) => p.id === parentId) || null;
+	}
+
+	let parentPlan = $derived(getParentPlan(creatingParentId));
+	let parentMinDate = $derived(parentPlan?.start_date || '');
+	let parentMaxDate = $derived(parentPlan?.end_date || '');
 
 	function buildTree(planList: any[], parentId: number | null = null): any[] {
 		return planList
@@ -39,12 +51,18 @@
 						<span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">Leaf</span>
 					{/if}
 				</div>
-				<div class="mt-1 flex gap-4 text-xs text-gray-500">
+				<div class="mt-1 flex flex-wrap gap-4 text-xs text-gray-500">
 					<span>งบตั้ง: {formatBaht(node.estimated_amount)}</span>
 					<span>จ่ายจริง: {formatBaht(node.actual_amount)}</span>
+					{#if node.start_date && node.end_date}
+						<span>ช่วงเวลา: {node.start_date} - {node.end_date}</span>
+					{/if}
+					{#if node.duration_text}
+						<span>({node.duration_text})</span>
+					{/if}
 				</div>
 			</div>
-			<div class="flex gap-1">
+			<div class="flex items-center gap-1">
 				{#if !node.is_leaf_node}
 					<button
 						onclick={() => { creatingParentId = node.id; showCreateModal = true; }}
@@ -59,7 +77,7 @@
 				>
 					แก้ไข
 				</button>
-				<form method="POST" action="?/deletePlan" use:enhance>
+				<form method="POST" action="?/deletePlan" use:enhance class="flex">
 					<input type="hidden" name="id" value={node.id} />
 					<button type="submit" class="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50">ลบ</button>
 				</form>
@@ -187,38 +205,72 @@
 
 <!-- Create Plan Modal -->
 {#if showCreateModal}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
 		<div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
 			<h2 class="text-lg font-bold text-gray-900">สร้างแผนงาน{creatingParentId ? 'ย่อย' : ''}</h2>
+			{#if parentPlan}
+				<p class="mt-1 text-xs text-gray-500">แผนแม่: {parentPlan.title}
+					{#if parentPlan.start_date && parentPlan.end_date}
+						(ช่วงวันที่: {parentPlan.start_date} ถึง {parentPlan.end_date})
+					{/if}
+				</p>
+			{/if}
 			<form method="POST" action="?/createPlan" use:enhance={() => {
-				return async ({ update }) => { showCreateModal = false; creatingParentId = null; await update(); };
+				return async ({ update }) => { showCreateModal = false; creatingParentId = null; createIsLeaf = false; await update(); };
 			}}>
 				<input type="hidden" name="agency_id" value={data.selectedAgencyId || ''} />
 				<input type="hidden" name="fiscal_year_id" value={data.selectedFyId || ''} />
 				<input type="hidden" name="parent_id" value={creatingParentId || ''} />
 				<div class="mt-4 space-y-3">
 					<div>
-						<label class="block text-sm font-medium text-gray-700">ชื่อแผน <span class="text-red-500">*</span></label>
-						<input name="title" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+						<label for="create-title" class="block text-sm font-medium text-gray-700">ชื่อแผน/โครงการ/กิจกรรม <span class="text-red-500">*</span></label>
+						<input id="create-title" name="title" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
 					</div>
 					<div>
-						<label class="block text-sm font-medium text-gray-700">ประเภท <span class="text-red-500">*</span></label>
-						<select name="plan_type" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+						<label for="create-plan_type" class="block text-sm font-medium text-gray-700">ประเภท <span class="text-red-500">*</span></label>
+						<select id="create-plan_type" name="plan_type" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
 							<option value="EXPENSE">รายจ่าย (EXPENSE)</option>
 							<option value="INCOME">รายรับ (INCOME)</option>
 						</select>
 					</div>
+					<div>
+						<label for="create-responsible_unit_id" class="block text-sm font-medium text-gray-700">หน่วยงานที่รับผิดชอบ</label>
+						<select id="create-responsible_unit_id" name="responsible_unit_id" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+							<option value="">-- ไม่ระบุ --</option>
+							{#each data.orgUnits as unit}
+								<option value={unit.id}>{unit.name}</option>
+							{/each}
+						</select>
+					</div>
+					<div class="grid grid-cols-2 gap-3">
+						<div>
+							<label for="create-start_date" class="block text-sm font-medium text-gray-700">วันที่เริ่มดำเนินการ</label>
+							<input id="create-start_date" name="start_date" type="date" min={parentMinDate || undefined} max={parentMaxDate || undefined} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+						</div>
+						<div>
+							<label for="create-end_date" class="block text-sm font-medium text-gray-700">วันที่สิ้นสุด</label>
+							<input id="create-end_date" name="end_date" type="date" min={parentMinDate || undefined} max={parentMaxDate || undefined} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+						</div>
+					</div>
+					<div>
+						<label for="create-expected_outputs" class="block text-sm font-medium text-gray-700">ผลผลิตที่คาดหวัง</label>
+						<textarea id="create-expected_outputs" name="expected_outputs" rows="3" placeholder="ระบุผลผลิตที่คาดหวัง (บรรทัดละรายการ)" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"></textarea>
+					</div>
 					<label class="flex items-center gap-2 text-sm">
-						<input type="checkbox" name="is_leaf_node" value="true" class="rounded border-gray-300" />
+						<input type="checkbox" name="is_leaf_node" value="true" onchange={(e) => { createIsLeaf = (e.target as HTMLInputElement).checked; }} class="rounded border-gray-300" />
 						แผนล่างสุด (Leaf Node) - พร้อมเปิดเอกสารจัดซื้อ
 					</label>
-					<div>
-						<label class="block text-sm font-medium text-gray-700">งบประมาณที่ตั้งไว้ (บาท)</label>
-						<input name="estimated_amount" type="number" step="0.01" value="0" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
-					</div>
+					{#if createIsLeaf}
+						<div>
+							<label for="create-estimated_amount" class="block text-sm font-medium text-gray-700">งบประมาณที่ตั้งไว้ (บาท)</label>
+							<input id="create-estimated_amount" name="estimated_amount" type="number" step="0.01" value="0" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+						</div>
+					{:else}
+						<p class="text-xs text-amber-600">* งบประมาณจะถูกคำนวณอัตโนมัติจากแผนย่อย (Bottom-up Rollup)</p>
+					{/if}
 				</div>
 				<div class="mt-6 flex justify-end gap-2">
-					<button type="button" onclick={() => { showCreateModal = false; creatingParentId = null; }} class="rounded-lg border px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">ยกเลิก</button>
+					<button type="button" onclick={() => { showCreateModal = false; creatingParentId = null; createIsLeaf = false; }} class="rounded-lg border px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">ยกเลิก</button>
 					<button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">บันทึก</button>
 				</div>
 			</form>
@@ -228,29 +280,64 @@
 
 <!-- Edit Plan Modal -->
 {#if editingPlan}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+	{@const editParent = getParentPlan(editingPlan.parent_id)}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
 		<div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
 			<h2 class="text-lg font-bold text-gray-900">แก้ไขแผนงาน</h2>
+			{#if editParent}
+				<p class="mt-1 text-xs text-gray-500">แผนแม่: {editParent.title}
+					{#if editParent.start_date && editParent.end_date}
+						(ช่วงวันที่: {editParent.start_date} ถึง {editParent.end_date})
+					{/if}
+				</p>
+			{/if}
 			<form method="POST" action="?/updatePlan" use:enhance={() => {
-				return async ({ update }) => { editingPlan = null; await update(); };
+				return async ({ update }) => { editingPlan = null; editIsLeaf = false; await update(); };
 			}}>
 				<input type="hidden" name="id" value={editingPlan.id} />
 				<div class="mt-4 space-y-3">
 					<div>
-						<label class="block text-sm font-medium text-gray-700">ชื่อแผน</label>
-						<input name="title" value={editingPlan.title} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+						<label for="edit-title" class="block text-sm font-medium text-gray-700">ชื่อแผน/โครงการ/กิจกรรม</label>
+						<input id="edit-title" name="title" value={editingPlan.title} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+					</div>
+					<div>
+						<label for="edit-responsible_unit_id" class="block text-sm font-medium text-gray-700">หน่วยงานที่รับผิดชอบ</label>
+						<select id="edit-responsible_unit_id" name="responsible_unit_id" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+							<option value="">-- ไม่ระบุ --</option>
+							{#each data.orgUnits as unit}
+								<option value={unit.id} selected={editingPlan.responsible_unit_id === unit.id}>{unit.name}</option>
+							{/each}
+						</select>
+					</div>
+					<div class="grid grid-cols-2 gap-3">
+						<div>
+							<label for="edit-start_date" class="block text-sm font-medium text-gray-700">วันที่เริ่มดำเนินการ</label>
+							<input id="edit-start_date" name="start_date" type="date" value={editingPlan.start_date || ''} min={editParent?.start_date || undefined} max={editParent?.end_date || undefined} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+						</div>
+						<div>
+							<label for="edit-end_date" class="block text-sm font-medium text-gray-700">วันที่สิ้นสุด</label>
+							<input id="edit-end_date" name="end_date" type="date" value={editingPlan.end_date || ''} min={editParent?.start_date || undefined} max={editParent?.end_date || undefined} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+						</div>
+					</div>
+					<div>
+						<label for="edit-expected_outputs" class="block text-sm font-medium text-gray-700">ผลผลิตที่คาดหวัง</label>
+						<textarea id="edit-expected_outputs" name="expected_outputs" rows="3" placeholder="ระบุผลผลิตที่คาดหวัง (บรรทัดละรายการ)" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">{Array.isArray(editingPlan.expected_outputs) ? editingPlan.expected_outputs.join('\n') : (editingPlan.expected_outputs || '')}</textarea>
 					</div>
 					<label class="flex items-center gap-2 text-sm">
-						<input type="checkbox" name="is_leaf_node" value="true" checked={editingPlan.is_leaf_node} class="rounded border-gray-300" />
+						<input type="checkbox" name="is_leaf_node" value="true" checked={editingPlan.is_leaf_node} onchange={(e) => { editIsLeaf = (e.target as HTMLInputElement).checked; }} class="rounded border-gray-300" />
 						แผนล่างสุด (Leaf Node)
 					</label>
-					<div>
-						<label class="block text-sm font-medium text-gray-700">งบประมาณที่ตั้งไว้ (บาท)</label>
-						<input name="estimated_amount" type="number" step="0.01" value={editingPlan.estimated_amount} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
-					</div>
+					{#if editIsLeaf || editingPlan.is_leaf_node}
+						<div>
+							<label for="edit-estimated_amount" class="block text-sm font-medium text-gray-700">งบประมาณที่ตั้งไว้ (บาท)</label>
+							<input id="edit-estimated_amount" name="estimated_amount" type="number" step="0.01" value={editingPlan.estimated_amount} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+						</div>
+					{:else}
+						<p class="text-xs text-amber-600">* งบประมาณจะถูกคำนวณอัตโนมัติจากแผนย่อย (Bottom-up Rollup)</p>
+					{/if}
 				</div>
 				<div class="mt-6 flex justify-end gap-2">
-					<button type="button" onclick={() => (editingPlan = null)} class="rounded-lg border px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">ยกเลิก</button>
+					<button type="button" onclick={() => { editingPlan = null; editIsLeaf = false; }} class="rounded-lg border px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">ยกเลิก</button>
 					<button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">บันทึก</button>
 				</div>
 			</form>
