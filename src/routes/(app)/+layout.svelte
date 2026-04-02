@@ -60,8 +60,8 @@
 				<form method="POST" action="/logout">
 					<button
 						type="submit"
-						class="group relative flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 hover:bg-white hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30"
-						style="color: oklch(0.58 0.030 180);"
+						class="group relative flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 logout-btn"
+						style="color: var(--color-error); background: transparent;"
 					>
 						<svg class="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
@@ -80,3 +80,10 @@
 		</main>
 	</div>
 </div>
+
+<style>
+	.logout-btn:hover {
+		background: var(--color-error-muted) !important;
+		box-shadow: 0 2px 8px oklch(0.6 0.15 25 / 0.2);
+	}
+</style>

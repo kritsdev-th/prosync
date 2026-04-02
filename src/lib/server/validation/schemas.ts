@@ -203,6 +203,8 @@ const optionalDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบ
 	.nullable().optional()
 	.or(z.literal('').transform(() => null));
 
+const requiredDate = z.string().min(1, 'กรุณาเลือกวันที่').regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
+
 const optionalIdList = z.string()
 	.transform((v) => {
 		if (!v || v.trim() === '') return null;
@@ -211,17 +213,21 @@ const optionalIdList = z.string()
 	.nullable().optional()
 	.or(z.literal('').transform(() => null));
 
+const requiredIdList = z.string().min(1, 'กรุณาเลือกอย่างน้อย 1 รายการ')
+	.transform((v) => v.split(',').map(Number).filter((n) => !isNaN(n) && n > 0))
+	.refine((arr) => arr.length > 0, 'กรุณาเลือกอย่างน้อย 1 รายการ');
+
 export const createPlanSchema = z.object({
 	agency_id: positiveId,
 	fiscal_year_id: positiveId,
 	title: requiredString('ชื่อแผน').pipe(z.string().max(255)),
 	parent_id: optionalId,
-	responsible_unit_id: optionalId,
-	start_date: optionalDate,
-	end_date: optionalDate,
+	responsible_unit_id: positiveId,
+	start_date: requiredDate,
+	end_date: requiredDate,
 	expected_outputs: optionalString,
 	description: optionalString,
-	stakeholder_unit_ids: optionalIdList,
+	stakeholder_unit_ids: requiredIdList,
 	plan_type: z.enum(planTypes, { message: 'กรุณาเลือกประเภทแผน' }),
 	is_leaf_node: z.enum(['true', 'false']).transform((v) => v === 'true').default('false'),
 	estimated_amount: monetaryAmount.default(0)

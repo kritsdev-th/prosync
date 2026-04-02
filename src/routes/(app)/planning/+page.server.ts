@@ -114,7 +114,7 @@ export const actions: Actions = {
 
 			// For sub-plans: inherit plan_type and responsible_unit_id from parent
 			let finalPlanType = plan_type;
-			let finalResponsibleUnitId = responsible_unit_id ?? null;
+			let finalResponsibleUnitId: number | null = responsible_unit_id;
 			if (parent_id) {
 				const [parentPlan] = await db.select().from(plans).where(eq(plans.id, parent_id));
 				if (parentPlan) {
@@ -150,12 +150,12 @@ export const actions: Actions = {
 					title,
 					parent_id: parent_id ?? null,
 					responsible_unit_id: finalResponsibleUnitId,
-					start_date: start_date ?? null,
-					end_date: end_date ?? null,
+					start_date,
+					end_date,
 					duration_text: calcDuration(start_date, end_date),
 					expected_outputs: parsedExpectedOutputs,
 					description: description ?? null,
-					stakeholder_unit_ids: stakeholder_unit_ids ?? null,
+					stakeholder_unit_ids: stakeholder_unit_ids,
 					plan_type: finalPlanType,
 					is_leaf_node,
 					estimated_amount: finalEstimatedAmount

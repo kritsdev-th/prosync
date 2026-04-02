@@ -30,9 +30,14 @@
 		collapsed = next;
 	}
 
-	// Pagination
-	const PAGE_SIZE = 10;
-	let currentPage = $state(1);
+	// Search & Filters
+	let searchQuery = $state('');
+	let filterResponsibleUnitStr = $state('');
+	let filterStakeholderUnitStr = $state('');
+	let filterBudgetMin = $state('');
+	let filterBudgetMax = $state('');
+	let filterResponsibleUnit = $derived(filterResponsibleUnitStr ? Number(filterResponsibleUnitStr) : null);
+	let filterStakeholderUnit = $derived(filterStakeholderUnitStr ? Number(filterStakeholderUnitStr) : null);
 
 	let canCreate = $derived(!!data.selectedAgencyId);
 
@@ -57,14 +62,92 @@
 			.map((p) => ({ ...p, children: buildTree(planList, p.id) }));
 	}
 
-	let tree = $derived(buildTree(data.plans));
-	let totalPages = $derived(Math.max(1, Math.ceil(tree.length / PAGE_SIZE)));
-	let paginatedTree = $derived(tree.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE));
+	// Filter plans — when a child matches search, include the whole parent tree
+	let filteredPlans = $derived.by(() => {
+		const q = searchQuery.trim().toLowerCase();
+		const rUnit = filterResponsibleUnit;
+		const sUnit = filterStakeholderUnit;
+		const bMin = filterBudgetMin ? Number(filterBudgetMin) : null;
+		const bMax = filterBudgetMax ? Number(filterBudgetMax) : null;
+
+		const hasFilter = q || rUnit || sUnit || bMin !== null || bMax !== null;
+		if (!hasFilter) return data.plans;
+
+		// Check if a single plan matches the non-search filters
+		function matchesFilters(p: any): boolean {
+			if (rUnit && p.responsible_unit_id !== rUnit) return false;
+			if (sUnit && !(Array.isArray(p.stakeholder_unit_ids) && p.stakeholder_unit_ids.includes(sUnit))) return false;
+			const est = Number(p.estimated_amount);
+			if (bMin !== null && est < bMin) return false;
+			if (bMax !== null && est > bMax) return false;
+			return true;
+		}
+
+		// Check if plan title matches search query (partial match)
+		function matchesSearch(p: any): boolean {
+			if (!q) return true;
+			return p.title.toLowerCase().includes(q);
+		}
+
+		// Find all plan IDs that directly match
+		const matchedIds = new Set<number>();
+		for (const p of data.plans) {
+			if (matchesFilters(p) && matchesSearch(p)) {
+				matchedIds.add(p.id);
+			}
+		}
+
+		// For each matched plan, walk up to include all ancestors
+		const includedIds = new Set<number>(matchedIds);
+		function addAncestors(planId: number) {
+			const plan = data.plans.find((p: any) => p.id === planId);
+			if (plan?.parent_id) {
+				includedIds.add(plan.parent_id);
+				addAncestors(plan.parent_id);
+			}
+		}
+		for (const id of matchedIds) {
+			addAncestors(id);
+		}
+
+		// For each matched plan, if it's a child, include all siblings under same parent
+		// Also include all descendants of matched parents
+		const finalIds = new Set<number>(includedIds);
+		for (const id of matchedIds) {
+			const plan = data.plans.find((p: any) => p.id === id);
+			if (plan?.parent_id) {
+				// Add all siblings under same parent
+				for (const p of data.plans) {
+					if (p.parent_id === plan.parent_id) {
+						finalIds.add(p.id);
+					}
+				}
+			}
+		}
+		// Include all descendants of included plans
+		function addDescendants(parentId: number) {
+			for (const p of data.plans) {
+				if (p.parent_id === parentId && !finalIds.has(p.id)) {
+					finalIds.add(p.id);
+					addDescendants(p.id);
+				}
+			}
+		}
+		for (const id of Array.from(includedIds)) {
+			addDescendants(id);
+		}
+
+		return data.plans.filter((p: any) => finalIds.has(p.id));
+	});
+
+	let tree = $derived(buildTree(filteredPlans));
 	let activeFy = $derived(data.fiscalYears.find((fy: any) => fy.id === data.selectedFyId));
 
-	// Reset page when data changes
+	// Auto-expand all when searching
 	$effect(() => {
-		if (data.selectedFyId) currentPage = 1;
+		if (searchQuery.trim() || filterResponsibleUnit || filterStakeholderUnit || filterBudgetMin || filterBudgetMax) {
+			collapsed = new Set();
+		}
 	});
 
 	function selectFy(fyId: number) {
@@ -205,138 +288,158 @@
 	</div>
 {/snippet}
 
-<!-- Page Layout -->
-<div style="max-width: 72rem; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem)">
-	<!-- Header: asymmetric -->
-	<div class="flex items-end justify-between gap-6">
-		<div>
-			<h1 style="color: var(--color-slate-900)">แผนยุทธศาสตร์และงบประมาณ</h1>
-			<p class="mt-1" style="color: var(--color-slate-500); font-size: clamp(0.8125rem, 1.2vw, 0.875rem)">วางแผน ติดตาม และเปรียบเทียบข้อมูลปีต่อปี</p>
+<!-- Page Layout: full-height fixed frame -->
+<div class="flex flex-col" style="max-width: 72rem; margin: 0 auto; padding: 0.75rem clamp(1rem, 3vw, 2rem); height: calc(100vh - 3.5rem)">
+	<!-- Compact Header -->
+	<div class="shrink-0">
+		<!-- Row 1: Title + Agency selector + FY tabs + Actions — all in one line -->
+		<div class="flex items-center gap-4">
+			<h1 class="shrink-0 text-2xl font-bold" style="color: var(--color-slate-900)">แผนยุทธศาสตร์</h1>
+
+			{#if data.user.is_super_admin && data.agencies.length > 0}
+				<select onchange={(e) => goto(`/planning?agency_id=${(e.target as HTMLSelectElement).value}`)}
+					class="shrink-0 rounded-md px-2 py-1 text-[0.75rem]"
+					style="border: 1px solid var(--color-slate-200); color: var(--color-slate-700); background: white; outline: none">
+					<option value="">-- หน่วยงาน --</option>
+					{#each data.agencies as agency}
+						<option value={agency.id} selected={data.selectedAgencyId === agency.id}>{agency.name}</option>
+					{/each}
+				</select>
+			{/if}
+
+			{#if data.fiscalYears.length > 0}
+				<div class="flex items-center gap-0.5">
+					{#each data.fiscalYears as fy}
+						<button onclick={() => selectFy(fy.id)}
+							class="relative rounded-md px-2.5 py-1 text-[0.75rem] font-medium transition-colors duration-200"
+							style="color: {data.selectedFyId === fy.id ? 'var(--color-brand-700)' : 'var(--color-slate-500)'}; background: {data.selectedFyId === fy.id ? 'var(--color-brand-50)' : 'transparent'}">
+							{fy.year_name}
+							{#if fy.is_active}
+								<span class="ml-0.5 inline-block h-1.5 w-1.5 rounded-full pulse-soft" style="background: var(--color-health-500)"></span>
+							{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
+
+			<div class="ml-auto flex items-center gap-1.5">
+				<button onclick={() => (showFyModal = true)} disabled={!canCreate}
+					class="rounded-md px-2.5 py-1 text-[0.75rem] font-medium transition-colors duration-150 disabled:cursor-not-allowed"
+					style="color: {canCreate ? 'var(--color-slate-600)' : 'var(--color-slate-300)'}; border: 1px solid var(--color-slate-200); opacity: {canCreate ? '1' : '0.6'}">
+					สร้างปีงบ
+				</button>
+				<button onclick={() => { creatingParentId = null; showCreateModal = true; }} disabled={!canCreate}
+					class="rounded-md px-3 py-1 text-[0.75rem] font-medium text-white transition-all duration-200 disabled:cursor-not-allowed"
+					style="background: {canCreate ? 'var(--color-brand-600)' : 'var(--color-slate-300)'}">
+					สร้างแผนงาน
+				</button>
+			</div>
 		</div>
-		<div class="flex items-center gap-2">
-			<button onclick={() => (showFyModal = true)} disabled={!canCreate}
-				class="rounded-lg px-3 py-2 text-[0.8125rem] font-medium transition-colors duration-150 disabled:cursor-not-allowed"
-				style="color: {canCreate ? 'var(--color-slate-600)' : 'var(--color-slate-300)'}; border: 1px solid var(--color-slate-200); opacity: {canCreate ? '1' : '0.6'}">
-				สร้างปีงบประมาณ
-			</button>
-			<button onclick={() => { creatingParentId = null; showCreateModal = true; }} disabled={!canCreate}
-				class="rounded-lg px-4 py-2 text-[0.8125rem] font-medium text-white transition-all duration-200 disabled:cursor-not-allowed"
-				style="background: {canCreate ? 'var(--color-brand-600)' : 'var(--color-slate-300)'}">
-				สร้างแผนงาน
-			</button>
+
+		<!-- Row 2: Summary strip -->
+		{#if activeFy}
+			<div class="mt-2 grid grid-cols-4 gap-2">
+				<div class="rounded-md px-3 py-2" style="background: var(--color-health-50)">
+					<p class="text-[0.625rem] font-medium uppercase tracking-wider" style="color: var(--color-health-600)">คาดการณ์รายรับ</p>
+					<p class="mt-0.5 text-sm font-bold tabular-nums" style="color: var(--color-health-800)">{formatBaht(String(activeFy.total_estimated_income))}</p>
+				</div>
+				<div class="rounded-md px-3 py-2" style="background: var(--color-brand-50)">
+					<p class="text-[0.625rem] font-medium uppercase tracking-wider" style="color: var(--color-brand-600)">คาดการณ์รายจ่าย</p>
+					<p class="mt-0.5 text-sm font-bold tabular-nums" style="color: var(--color-brand-800)">{formatBaht(String(activeFy.total_estimated_expense))}</p>
+				</div>
+				<div class="rounded-md px-3 py-2" style="background: var(--color-slate-50)">
+					<p class="text-[0.625rem] font-medium uppercase tracking-wider" style="color: var(--color-slate-400)">รายรับจริง</p>
+					<p class="mt-0.5 text-sm font-semibold tabular-nums" style="color: var(--color-slate-700)">{formatBaht(String(activeFy.total_actual_income))}</p>
+				</div>
+				<div class="rounded-md px-3 py-2" style="background: var(--color-slate-50)">
+					<p class="text-[0.625rem] font-medium uppercase tracking-wider" style="color: var(--color-slate-400)">รายจ่ายจริง</p>
+					<p class="mt-0.5 text-sm font-semibold tabular-nums" style="color: var(--color-slate-700)">{formatBaht(String(activeFy.total_actual_expense))}</p>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Row 3: Search & Filters -->
+		<div class="mt-2 flex items-center gap-2 flex-wrap">
+			<div class="relative flex-1" style="min-width: 12rem">
+				<svg class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" style="color: var(--color-slate-400)" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
+				<input type="text" placeholder="ค้นหาชื่อแผนงาน..."
+					bind:value={searchQuery}
+					class="w-full rounded-md py-1.5 pl-8 pr-2 text-[0.8125rem] outline-none"
+					style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white" />
+			</div>
+			<select bind:value={filterResponsibleUnitStr}
+				title={filterResponsibleUnit ? (data.orgUnits.find((u: any) => u.id === filterResponsibleUnit)?.name || '') : 'หน่วยงานรับผิดชอบ'}
+				class="filter-select rounded-md px-2 py-1.5 text-[0.8125rem] outline-none"
+				style="border: 1px solid var(--color-slate-200); color: var(--color-slate-700); background: white; max-width: 10rem">
+				<option value="">หน่วยงานรับผิดชอบ</option>
+				{#each data.orgUnits as unit}
+					<option value={String(unit.id)}>{unit.name}</option>
+				{/each}
+			</select>
+			<select bind:value={filterStakeholderUnitStr}
+				title={filterStakeholderUnit ? (data.orgUnits.find((u: any) => u.id === filterStakeholderUnit)?.name || '') : 'ผู้เกี่ยวข้อง (หน่วยงาน)'}
+				class="filter-select rounded-md px-2 py-1.5 text-[0.8125rem] outline-none"
+				style="border: 1px solid var(--color-slate-200); color: var(--color-slate-700); background: white; max-width: 10rem">
+				<option value="">ผู้เกี่ยวข้อง</option>
+				{#each data.orgUnits as unit}
+					<option value={String(unit.id)}>{unit.name}</option>
+				{/each}
+			</select>
+			<div class="flex items-center gap-1.5">
+				<input type="number" placeholder="งบต่ำสุด" step="1000"
+					bind:value={filterBudgetMin}
+					class="w-28 rounded-md px-2.5 py-1.5 text-[0.8125rem] outline-none"
+					style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white" />
+				<span class="text-[0.75rem]" style="color: var(--color-slate-400)">—</span>
+				<input type="number" placeholder="งบสูงสุด" step="1000"
+					bind:value={filterBudgetMax}
+					class="w-28 rounded-md px-2.5 py-1.5 text-[0.8125rem] outline-none"
+					style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white" />
+				<span class="text-[0.75rem] font-medium" style="color: var(--color-slate-400)">บาท</span>
+			</div>
+			{#if searchQuery || filterResponsibleUnitStr || filterStakeholderUnitStr || filterBudgetMin || filterBudgetMax}
+				<button onclick={() => { searchQuery = ''; filterResponsibleUnitStr = ''; filterStakeholderUnitStr = ''; filterBudgetMin = ''; filterBudgetMax = ''; }}
+					class="rounded-md px-2.5 py-1.5 text-[0.75rem] font-medium transition-colors duration-150"
+					style="color: var(--color-error); background: var(--color-error-muted)">
+					ล้างตัวกรอง
+				</button>
+			{/if}
 		</div>
 	</div>
 
-	{#if data.user.is_super_admin && data.agencies.length > 0}
-		<div class="mt-5">
-			<select onchange={(e) => goto(`/planning?agency_id=${(e.target as HTMLSelectElement).value}`)}
-				class="rounded-lg px-3 py-2 text-sm"
-				style="border: 1px solid var(--color-slate-200); color: var(--color-slate-700); background: white; outline: none">
-				<option value="">-- เลือกหน่วยงาน --</option>
-				{#each data.agencies as agency}
-					<option value={agency.id} selected={data.selectedAgencyId === agency.id}>{agency.name}</option>
-				{/each}
-			</select>
-		</div>
-	{/if}
-
-	<!-- Toast triggered via $effect below -->
-
-	<!-- Fiscal Year Tabs -->
-	{#if data.fiscalYears.length > 0}
-		<div class="mt-6 flex gap-1" style="border-bottom: 1px solid var(--color-slate-200)">
-			{#each data.fiscalYears as fy}
-				<button onclick={() => selectFy(fy.id)}
-					class="relative rounded-t-lg px-4 py-2.5 text-[0.8125rem] font-medium transition-colors duration-200"
-					style="color: {data.selectedFyId === fy.id ? 'var(--color-brand-600)' : 'var(--color-slate-500)'}">
-					ปี {fy.year_name}
-					{#if fy.is_active}
-						<span class="ml-1 inline-block h-1.5 w-1.5 rounded-full pulse-soft" style="background: var(--color-health-500)"></span>
-					{/if}
-					{#if data.selectedFyId === fy.id}
-						<div class="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style="background: var(--color-brand-500)"></div>
-					{/if}
-				</button>
-			{/each}
-		</div>
-
-		<!-- Fiscal Year Summary: asymmetric 2+2 -->
-		{#if activeFy}
-			<div class="mt-5 grid grid-cols-4 gap-3" style="grid-template-columns: 1.2fr 1.2fr 1fr 1fr">
-				<div class="rounded-lg p-4 slide-up" style="background: var(--color-health-50)">
-					<p class="text-[0.6875rem] font-medium uppercase tracking-wider" style="color: var(--color-health-600)">คาดการณ์รายรับ</p>
-					<p class="mt-1 text-lg font-bold" style="color: var(--color-health-800)">{formatBaht(String(activeFy.total_estimated_income))}</p>
+	<!-- Plan Tree: scrollable area fills remaining height -->
+	<div class="mt-2 min-h-0 flex-1 overflow-y-auto rounded-lg" style="border: 1px solid var(--color-slate-100); background: white; scrollbar-width: thin; scrollbar-color: var(--color-slate-300) transparent">
+		<div class="p-4">
+			{#if tree.length === 0}
+				<div class="py-16 text-center" style="color: var(--color-slate-400)">
+					<p class="text-sm">{data.selectedAgencyId ? (searchQuery || filterResponsibleUnit || filterStakeholderUnit || filterBudgetMin || filterBudgetMax ? 'ไม่พบแผนงานที่ตรงกับเงื่อนไข' : 'ยังไม่มีแผนงาน') : 'กรุณาเลือกหน่วยงานก่อน'}</p>
 				</div>
-				<div class="rounded-lg p-4 slide-up-delay-1" style="background: var(--color-brand-50)">
-					<p class="text-[0.6875rem] font-medium uppercase tracking-wider" style="color: var(--color-brand-600)">คาดการณ์รายจ่าย</p>
-					<p class="mt-1 text-lg font-bold" style="color: var(--color-brand-800)">{formatBaht(String(activeFy.total_estimated_expense))}</p>
+			{:else}
+				<!-- Count + collapse all -->
+				<div class="mb-3 flex items-center justify-between">
+					<p class="text-[0.75rem]" style="color: var(--color-slate-400)">
+						แผนงานทั้งหมด {tree.length} แผน
+						{#if filteredPlans.length !== data.plans.length}
+							<span style="color: var(--color-brand-500)">(กรอง {filteredPlans.length} จาก {data.plans.length} รายการ)</span>
+						{/if}
+					</p>
+					<div class="flex items-center gap-2">
+						<button onclick={() => { collapsed = new Set(); }}
+							class="rounded px-2 py-1 text-[0.6875rem] font-medium transition-colors duration-150"
+							style="color: var(--color-slate-500)">ขยายทั้งหมด</button>
+						<button onclick={() => { collapsed = new Set(tree.map((n: any) => n.id)); }}
+							class="rounded px-2 py-1 text-[0.6875rem] font-medium transition-colors duration-150"
+							style="color: var(--color-slate-500)">ยุบทั้งหมด</button>
+					</div>
 				</div>
-				<div class="rounded-lg p-3 slide-up-delay-2" style="background: var(--color-slate-50)">
-					<p class="text-[0.6875rem] font-medium uppercase tracking-wider" style="color: var(--color-slate-400)">รายรับจริง</p>
-					<p class="mt-1 text-base font-semibold" style="color: var(--color-slate-700)">{formatBaht(String(activeFy.total_actual_income))}</p>
-				</div>
-				<div class="rounded-lg p-3 slide-up-delay-3" style="background: var(--color-slate-50)">
-					<p class="text-[0.6875rem] font-medium uppercase tracking-wider" style="color: var(--color-slate-400)">รายจ่ายจริง</p>
-					<p class="mt-1 text-base font-semibold" style="color: var(--color-slate-700)">{formatBaht(String(activeFy.total_actual_expense))}</p>
-				</div>
-			</div>
-		{/if}
-	{/if}
 
-	<!-- Plan Tree -->
-	<div class="mt-8">
-		{#if tree.length === 0}
-			<div class="py-16 text-center" style="color: var(--color-slate-400)">
-				<p class="text-sm">{data.selectedAgencyId ? 'ยังไม่มีแผนงาน' : 'กรุณาเลือกหน่วยงานก่อน'}</p>
-			</div>
-		{:else}
-			<!-- Count + collapse all -->
-			<div class="mb-3 flex items-center justify-between">
-				<p class="text-[0.75rem]" style="color: var(--color-slate-400)">
-					แผนงานทั้งหมด {tree.length} แผน
-					{#if totalPages > 1}
-						/ หน้า {currentPage} จาก {totalPages}
-					{/if}
-				</p>
-				<div class="flex items-center gap-2">
-					<button onclick={() => { collapsed = new Set(); }}
-						class="rounded px-2 py-1 text-[0.6875rem] font-medium transition-colors duration-150"
-						style="color: var(--color-slate-500)">ขยายทั้งหมด</button>
-					<button onclick={() => { collapsed = new Set(tree.map((n: any) => n.id)); }}
-						class="rounded px-2 py-1 text-[0.6875rem] font-medium transition-colors duration-150"
-						style="color: var(--color-slate-500)">ยุบทั้งหมด</button>
-				</div>
-			</div>
-
-			<div class="space-y-1">
-				{#each paginatedTree as rootNode, i}
-					{@render planNode(rootNode, 0, i === paginatedTree.length - 1)}
-				{/each}
-			</div>
-
-			<!-- Pagination -->
-			{#if totalPages > 1}
-				<div class="mt-6 flex items-center justify-center gap-1">
-					<button onclick={() => (currentPage = Math.max(1, currentPage - 1))} disabled={currentPage <= 1}
-						class="rounded-md px-2.5 py-1.5 text-[0.75rem] font-medium transition-colors duration-150 disabled:cursor-not-allowed"
-						style="color: {currentPage <= 1 ? 'var(--color-slate-300)' : 'var(--color-slate-600)'}">
-						&larr; ก่อนหน้า
-					</button>
-					{#each Array.from({ length: totalPages }, (_, i) => i + 1) as page}
-						<button onclick={() => (currentPage = page)}
-							class="rounded-md px-2.5 py-1.5 text-[0.75rem] font-medium transition-colors duration-150"
-							style="background: {page === currentPage ? 'var(--color-brand-600)' : 'transparent'}; color: {page === currentPage ? 'white' : 'var(--color-slate-500)'}">
-							{page}
-						</button>
+				<div class="space-y-1">
+					{#each tree as rootNode, i}
+						{@render planNode(rootNode, 0, i === tree.length - 1)}
 					{/each}
-					<button onclick={() => (currentPage = Math.min(totalPages, currentPage + 1))} disabled={currentPage >= totalPages}
-						class="rounded-md px-2.5 py-1.5 text-[0.75rem] font-medium transition-colors duration-150 disabled:cursor-not-allowed"
-						style="color: {currentPage >= totalPages ? 'var(--color-slate-300)' : 'var(--color-slate-600)'}">
-						ถัดไป &rarr;
-					</button>
 				</div>
 			{/if}
-		{/if}
+		</div>
 	</div>
 </div>
 
@@ -444,11 +547,11 @@
 								</select>
 							</div>
 							<div>
-								{@render formField('c-unit', 'หน่วยงานรับผิดชอบ')}
-								<select id="c-unit" name="responsible_unit_id"
+								{@render formField('c-unit', 'หน่วยงานรับผิดชอบ', true)}
+								<select id="c-unit" name="responsible_unit_id" required
 									class="mt-1 block w-full rounded-lg px-3 py-2 text-sm outline-none"
 									style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white">
-									<option value="">-- ไม่ระบุ --</option>
+									<option value="">-- เลือกหน่วยงาน --</option>
 									{#each data.orgUnits as unit}<option value={unit.id}>{unit.name}</option>{/each}
 								</select>
 							</div>
@@ -472,14 +575,14 @@
 
 					<div class="grid grid-cols-2 gap-3">
 						<div>
-							{@render formField('c-start', 'วันที่เริ่ม')}
-							<input id="c-start" name="start_date" type="date" min={parentMinDate || undefined} max={parentMaxDate || undefined}
+							{@render formField('c-start', 'วันที่เริ่ม', true)}
+							<input id="c-start" name="start_date" type="date" required min={parentMinDate || undefined} max={parentMaxDate || undefined}
 								class="mt-1 block w-full rounded-lg px-3 py-2 text-sm outline-none"
 								style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white" />
 						</div>
 						<div>
-							{@render formField('c-end', 'วันที่สิ้นสุด')}
-							<input id="c-end" name="end_date" type="date" min={parentMinDate || undefined} max={parentMaxDate || undefined}
+							{@render formField('c-end', 'วันที่สิ้นสุด', true)}
+							<input id="c-end" name="end_date" type="date" required min={parentMinDate || undefined} max={parentMaxDate || undefined}
 								class="mt-1 block w-full rounded-lg px-3 py-2 text-sm outline-none"
 								style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white" />
 						</div>
@@ -502,7 +605,7 @@
 
 					{#if !isSubPlan}
 						<div>
-							<p class="text-[0.8125rem] font-medium" style="color: var(--color-slate-700)">ผู้เกี่ยวข้อง (หน่วยงาน)</p>
+							<p class="text-[0.8125rem] font-medium" style="color: var(--color-slate-700)">ผู้เกี่ยวข้อง (หน่วยงาน)<span style="color: var(--color-error)"> *</span></p>
 							<div class="mt-1 max-h-24 overflow-y-auto rounded-lg p-2 space-y-0.5" style="border: 1px solid var(--color-slate-200); background: white">
 								{#each data.orgUnits as unit}
 									<label class="flex items-center gap-2 rounded px-2 py-1 text-sm cursor-pointer"
@@ -515,12 +618,17 @@
 												const checks = form.querySelectorAll<HTMLInputElement>('input[name="stakeholder_unit_check"]:checked');
 												const hidden = form.querySelector<HTMLInputElement>('input[name="stakeholder_unit_ids"]');
 												if (hidden) hidden.value = Array.from(checks).map(c => c.value).join(',');
+												const reqInput = form.querySelector<HTMLInputElement>('input[name="stakeholder_required"]');
+												if (reqInput) reqInput.value = checks.length > 0 ? 'ok' : '';
 											}} />
 										{unit.name}
 									</label>
 								{/each}
 							</div>
 							<input type="hidden" name="stakeholder_unit_ids" value="" />
+							<input type="hidden" name="stakeholder_required" value="" required
+								oninvalid={(e) => { (e.target as HTMLInputElement).setCustomValidity('กรุณาเลือกหน่วยงานที่เกี่ยวข้องอย่างน้อย 1 หน่วย'); }}
+								oninput={(e) => { (e.target as HTMLInputElement).setCustomValidity(''); }} />
 						</div>
 					{:else if Array.isArray(parentPlan?.stakeholder_unit_ids) && parentPlan.stakeholder_unit_ids.length > 0}
 						<div>
@@ -902,5 +1010,10 @@
 	}
 	.toast-slide-in {
 		animation: toastSlideIn 0.4s var(--ease-out-expo) forwards;
+	}
+	.filter-select {
+		text-overflow: ellipsis;
+		overflow: hidden;
+		white-space: nowrap;
 	}
 </style>
