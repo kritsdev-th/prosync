@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import { plans, fiscalYears, agencies, orgUnits } from '$lib/server/db/schema';
+import { plans, fiscalYears, agencies, orgUnits, provinces } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { writeAuditLog } from '$lib/server/db/audit';
 import { createFiscalYearSchema, createPlanSchema, updatePlanSchema, parseFormData } from '$lib/server/validation/schemas';
@@ -28,16 +28,29 @@ interface FiscalYearRow {
 
 export const load: PageServerLoad = async ({ parent, url }) => {
 	const { user } = await parent();
+
+	// Province/agency selection for super admin
+	const selectedProvinceId = user.is_super_admin
+		? Number(url.searchParams.get('province_id')) || null
+		: null;
+
 	const agencyId = user.is_super_admin
 		? Number(url.searchParams.get('agency_id')) || null
 		: user.agency_id;
 
 	let fiscalYearList: FiscalYearRow[] = [];
 	let planList: typeof plans.$inferSelect[] = [];
-	let agencyList: typeof agencies.$inferSelect[] = [];
+	let agencyList: { id: number; name: string }[] = [];
+	let provinceList: { id: number; name: string }[] = [];
 
 	if (user.is_super_admin) {
-		agencyList = await db.select().from(agencies);
+		provinceList = await db.select({ id: provinces.id, name: provinces.name }).from(provinces);
+		if (selectedProvinceId) {
+			agencyList = await db
+				.select({ id: agencies.id, name: agencies.name })
+				.from(agencies)
+				.where(eq(agencies.province_id, selectedProvinceId));
+		}
 	}
 
 	let orgUnitList: typeof orgUnits.$inferSelect[] = [];
@@ -67,10 +80,12 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 
 		return {
 			user,
+			provinces: provinceList,
 			agencies: agencyList,
 			fiscalYears: fiscalYearList,
 			orgUnits: orgUnitList,
 			plans: planList,
+			selectedProvinceId,
 			selectedAgencyId: agencyId,
 			selectedFyId: selectedFy || null
 		};
@@ -78,10 +93,12 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 
 	return {
 		user,
+		provinces: provinceList,
 		agencies: agencyList,
 		fiscalYears: fiscalYearList,
 		orgUnits: orgUnitList,
 		plans: planList,
+		selectedProvinceId,
 		selectedAgencyId: agencyId,
 		selectedFyId: null
 	};

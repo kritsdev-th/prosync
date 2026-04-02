@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
+	import BackButton from '$lib/components/BackButton.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { exportToCsv } from '$lib/utils/format';
 
@@ -92,7 +93,8 @@
 </script>
 
 <div>
-	<div class="flex items-center justify-between">
+	<BackButton href="/org-management" label="กลับหน้าโครงสร้างองค์กร" />
+	<div class="mt-3 flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-gray-900">จัดการบทบาทและสิทธิ์</h1>
 			<p class="mt-1 text-sm text-gray-500">สร้าง แก้ไข ลบ บทบาท พร้อมกำหนดสิทธิ์การใช้งาน</p>

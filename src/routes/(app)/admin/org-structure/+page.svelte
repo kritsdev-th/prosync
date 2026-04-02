@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import BackButton from '$lib/components/BackButton.svelte';
 
 	let { data, form: formResult } = $props();
 	let showCreateModal = $state(false);
@@ -17,8 +18,8 @@
 {#snippet unitNode(node: any, depth: number)}
 	<div class="border-l-2 border-gray-200" style="margin-left: {depth * 24}px">
 		<div class="flex items-center gap-2 rounded-lg border bg-white p-3 my-1 hover:shadow-sm">
-			<div class="flex-1">
-				<div class="font-medium text-gray-900">{node.name}</div>
+			<a href="/admin/org-structure/{node.id}" class="flex-1 min-w-0 group">
+				<div class="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{node.name}</div>
 				<div class="text-xs text-gray-500">
 					{#if node.head_name}
 						หัวหน้า: {node.head_name}
@@ -26,7 +27,7 @@
 						<span class="text-gray-400">ยังไม่กำหนดหัวหน้า</span>
 					{/if}
 				</div>
-			</div>
+			</a>
 			<div class="flex gap-1">
 				<button
 					onclick={() => (editingUnit = node)}
@@ -51,7 +52,8 @@
 {/snippet}
 
 <div>
-	<div class="flex items-center justify-between">
+	<BackButton href="/org-management" label="กลับหน้าโครงสร้างองค์กร" />
+	<div class="mt-3 flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-gray-900">โครงสร้างองค์กร</h1>
 			<p class="mt-1 text-sm text-gray-500">จัดการแผนกและหน่วยงาน แบบ Tree Hierarchy</p>

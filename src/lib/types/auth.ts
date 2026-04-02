@@ -4,7 +4,9 @@ export interface JWTPayload {
 	name: string; // users.name
 	agency_id: number | null; // agencies.id (null for super admin)
 	is_super_admin: boolean;
+	is_director: boolean;
 	primary_org_unit_id: number | null;
+	profile_completed: boolean;
 	permissions: {
 		can_manage_users: boolean;
 		can_manage_plans: boolean;

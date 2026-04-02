@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import BackButton from '$lib/components/BackButton.svelte';
 	import { exportToCsv } from '$lib/utils/format';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -46,7 +47,8 @@
 </script>
 
 <div class="mx-auto max-w-5xl">
-	<div class="mb-6 flex items-center justify-between">
+	<BackButton href="/admin" label="กลับหน้าจัดการระบบ" />
+	<div class="mt-3 mb-6 flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-gray-900">จัดการหน่วยงาน</h1>
 			<p class="mt-1 text-sm text-gray-500">เพิ่ม แก้ไข ลบ หน่วยงานในระบบ</p>

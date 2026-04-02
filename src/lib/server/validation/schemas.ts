@@ -62,6 +62,17 @@ export const registerSchema = z.object({
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 
+export const completeProfileSchema = z.object({
+	position: requiredString('ยศ/คำนำหน้า').pipe(z.string().max(50)),
+	position_rank: requiredString('ระดับตำแหน่ง').pipe(z.string().max(255)),
+	agency_id: positiveId,
+	phone: requiredString('เบอร์โทรศัพท์').pipe(z.string().max(20).regex(/^[0-9\-+() ]+$/, 'รูปแบบเบอร์โทรไม่ถูกต้อง')),
+	email: z.string().email('รูปแบบอีเมลไม่ถูกต้อง').max(255).nullable().optional()
+		.or(z.literal('').transform(() => null))
+});
+
+export type CompleteProfileInput = z.infer<typeof completeProfileSchema>;
+
 // ──────────────────────────────────────────────
 // Users
 // ──────────────────────────────────────────────

@@ -55,7 +55,9 @@ export const users = pgTable('users', {
 	position_rank: varchar('position_rank', { length: 255 }),
 	name: varchar('name', { length: 255 }).notNull(),
 	email: varchar('email', { length: 255 }),
+	phone: varchar('phone', { length: 20 }),
 	is_super_admin: boolean('is_super_admin').notNull().default(false),
+	profile_completed: boolean('profile_completed').notNull().default(false),
 	deleted_at: timestamp('deleted_at', { withTimezone: true })
 });
 

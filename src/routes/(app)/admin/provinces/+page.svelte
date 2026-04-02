@@ -2,6 +2,7 @@
 	import type { PageData, ActionData } from './$types';
 	import { enhance } from '$app/forms';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import BackButton from '$lib/components/BackButton.svelte';
 	import { exportToCsv } from '$lib/utils/format';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -45,7 +46,8 @@
 
 <div class="mx-auto max-w-4xl">
 	<!-- Header -->
-	<div class="mb-6 flex items-center justify-between">
+	<BackButton href="/admin" label="กลับหน้าจัดการระบบ" />
+	<div class="mt-3 mb-6 flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-gray-900">จัดการจังหวัด</h1>
 			<p class="mt-1 text-sm text-gray-500">เพิ่ม แก้ไข ลบ ข้อมูลจังหวัดในระบบ</p>

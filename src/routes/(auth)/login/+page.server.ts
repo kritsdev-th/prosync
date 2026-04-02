@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { db } from '$lib/server/db';
-import { users, userAssignments, roles } from '$lib/server/db/schema';
+import { users, userAssignments, roles, orgUnits } from '$lib/server/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { verifyPassword } from '$lib/server/auth/password';
 import { signAccessToken, signRefreshToken } from '$lib/server/auth/jwt';
@@ -51,6 +51,8 @@ export const actions: Actions = {
 				can_view_audit_trail: false
 			};
 
+			let isDirector = false;
+
 			if (!user.is_super_admin) {
 				const assignments = await db
 					.select({
@@ -65,6 +67,19 @@ export const actions: Actions = {
 				const result = mergePermissions(assignments);
 				merged = result.permissions;
 				primaryOrgUnitId = result.primaryOrgUnitId;
+
+				if (user.agency_id) {
+					const [rootHead] = await db
+						.select({ id: orgUnits.id })
+						.from(orgUnits)
+						.where(and(
+							eq(orgUnits.head_of_unit_id, user.id),
+							isNull(orgUnits.parent_id),
+							eq(orgUnits.agency_id, user.agency_id)
+						))
+						.limit(1);
+					isDirector = !!rootHead;
+				}
 			}
 
 			const jwtPayload: JWTPayload = {
@@ -73,6 +88,8 @@ export const actions: Actions = {
 				name: user.name,
 				agency_id: user.agency_id,
 				is_super_admin: user.is_super_admin,
+				is_director: isDirector,
+				profile_completed: user.profile_completed,
 				primary_org_unit_id: primaryOrgUnitId,
 				permissions: merged
 			};

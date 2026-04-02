@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import BackButton from '$lib/components/BackButton.svelte';
 	import { formatBaht, formatThaiDate, exportToCsv } from '$lib/utils/format';
 
 	let { data, form: formResult } = $props();
@@ -25,7 +26,8 @@
 </script>
 
 <div>
-	<div class="flex items-center justify-between">
+	<BackButton href="/admin" label="กลับหน้าจัดการระบบ" />
+	<div class="mt-3 flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-gray-900">ราคากลาง</h1>
 			<p class="mt-1 text-sm text-gray-500">จัดการราคากลางแยกตามจังหวัด</p>

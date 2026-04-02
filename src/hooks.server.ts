@@ -1,7 +1,7 @@
 import { redirect, type Handle } from '@sveltejs/kit';
 import { verifyToken, verifyRefreshToken, signAccessToken } from '$lib/server/auth/jwt';
 import { db } from '$lib/server/db';
-import { users, userAssignments, roles } from '$lib/server/db/schema';
+import { users, userAssignments, roles, orgUnits } from '$lib/server/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import type { JWTPayload } from '$lib/types/auth';
 import { mergePermissions } from '$lib/server/validation/types';
@@ -14,7 +14,8 @@ async function buildJWTPayload(userId: number): Promise<JWTPayload | null> {
 			id_card: users.id_card,
 			name: users.name,
 			agency_id: users.agency_id,
-			is_super_admin: users.is_super_admin
+			is_super_admin: users.is_super_admin,
+			profile_completed: users.profile_completed
 		})
 		.from(users)
 		.where(and(eq(users.id, userId), isNull(users.deleted_at)));
@@ -30,6 +31,8 @@ async function buildJWTPayload(userId: number): Promise<JWTPayload | null> {
 		can_view_audit_trail: false
 	};
 
+	let isDirector = false;
+
 	if (!user.is_super_admin) {
 		const assignments = await db
 			.select({
@@ -44,6 +47,20 @@ async function buildJWTPayload(userId: number): Promise<JWTPayload | null> {
 		const result = mergePermissions(assignments);
 		merged = result.permissions;
 		primaryOrgUnitId = result.primaryOrgUnitId;
+
+		// Check if user is director (head of a root org unit)
+		if (user.agency_id) {
+			const [rootHead] = await db
+				.select({ id: orgUnits.id })
+				.from(orgUnits)
+				.where(and(
+					eq(orgUnits.head_of_unit_id, userId),
+					isNull(orgUnits.parent_id),
+					eq(orgUnits.agency_id, user.agency_id)
+				))
+				.limit(1);
+			isDirector = !!rootHead;
+		}
 	}
 
 	return {
@@ -52,6 +69,8 @@ async function buildJWTPayload(userId: number): Promise<JWTPayload | null> {
 		name: user.name,
 		agency_id: user.agency_id,
 		is_super_admin: user.is_super_admin,
+		is_director: isDirector,
+		profile_completed: user.profile_completed,
 		primary_org_unit_id: primaryOrgUnitId,
 		permissions: merged
 	};
@@ -104,7 +123,18 @@ export const handle: Handle = async ({ event, resolve }) => {
 		throw redirect(303, '/dashboard');
 	}
 
-	// 5. RBAC path checks (skip for super admin)
+	// 5. Redirect to profile completion if not completed (skip for super admins and the complete-profile page itself)
+	if (
+		event.locals.user &&
+		!event.locals.user.is_super_admin &&
+		!(event.locals.user.profile_completed ?? true) && // treat undefined as true for old JWTs
+		!event.url.pathname.startsWith('/complete-profile') &&
+		!event.url.pathname.startsWith('/api/auth')
+	) {
+		throw redirect(303, '/complete-profile');
+	}
+
+	// 6. RBAC path checks (skip for super admin)
 	if (event.locals.user && !event.locals.user.is_super_admin) {
 		const path = event.url.pathname;
 		const perms = event.locals.user.permissions;
@@ -121,7 +151,22 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (path.startsWith('/audit') && !perms.can_view_audit_trail) {
 			throw redirect(303, '/dashboard');
 		}
-		if (path.startsWith('/admin') && !perms.can_manage_users) {
+		// /admin/users, /admin/roles, /admin/org-structure: super admin OR director OR can_manage_users
+		if (
+			(path.startsWith('/admin/users') || path.startsWith('/admin/roles') || path.startsWith('/admin/org-structure')) &&
+			!perms.can_manage_users && !(event.locals.user.is_director ?? false)
+		) {
+			throw redirect(303, '/dashboard');
+		}
+		// /admin landing, /admin/provinces, /admin/agencies, /admin/median-prices: super admin only
+		if (
+			(path === '/admin' || path.startsWith('/admin/provinces') || path.startsWith('/admin/agencies') || path.startsWith('/admin/median-prices')) &&
+			!event.locals.user.is_super_admin
+		) {
+			throw redirect(303, '/dashboard');
+		}
+		// /org-management: super admin OR director
+		if (path.startsWith('/org-management') && !(event.locals.user.is_director ?? false)) {
 			throw redirect(303, '/dashboard');
 		}
 	}

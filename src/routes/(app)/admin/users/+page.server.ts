@@ -11,12 +11,26 @@ import {
 	parseFormData
 } from '$lib/server/validation/schemas';
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ url, locals }) => {
 	const search = url.searchParams.get('search') || '';
 
-	const searchCondition = search
-		? and(isNull(users.deleted_at), or(like(users.name, `%${search}%`), like(users.id_card, `%${search}%`)))
-		: isNull(users.deleted_at);
+	// Determine agency scope
+	let agencyFilter: number | null = null;
+	if (locals.user?.is_super_admin) {
+		const aidParam = url.searchParams.get('agency_id');
+		if (aidParam) agencyFilter = Number(aidParam);
+	} else if (locals.user?.is_director || locals.user?.permissions.can_manage_users) {
+		agencyFilter = locals.user.agency_id;
+	}
+
+	// Build search + agency conditions
+	const conditions = [isNull(users.deleted_at)];
+	if (search) {
+		conditions.push(or(like(users.name, `%${search}%`), like(users.id_card, `%${search}%`))!);
+	}
+	if (agencyFilter) {
+		conditions.push(eq(users.agency_id, agencyFilter));
+	}
 
 	const userList = await db
 		.select({
@@ -32,24 +46,49 @@ export const load: PageServerLoad = async ({ url }) => {
 		})
 		.from(users)
 		.leftJoin(agencies, eq(users.agency_id, agencies.id))
-		.where(searchCondition);
+		.where(and(...conditions));
 
-	const allAssignments = await db
-		.select({
-			id: userAssignments.id,
-			user_id: userAssignments.user_id,
-			role_id: userAssignments.role_id,
-			role_name: roles.name,
-			org_unit_id: userAssignments.org_unit_id,
-			org_unit_name: orgUnits.name,
-			is_primary_unit: userAssignments.is_primary_unit
-		})
-		.from(userAssignments)
-		.innerJoin(roles, eq(userAssignments.role_id, roles.id))
-		.innerJoin(orgUnits, eq(userAssignments.org_unit_id, orgUnits.id));
+	// Assignments — scoped by agency via org_unit
+	const assignmentConditions = agencyFilter
+		? eq(orgUnits.agency_id, agencyFilter)
+		: undefined;
+
+	const allAssignments = agencyFilter
+		? await db
+				.select({
+					id: userAssignments.id,
+					user_id: userAssignments.user_id,
+					role_id: userAssignments.role_id,
+					role_name: roles.name,
+					org_unit_id: userAssignments.org_unit_id,
+					org_unit_name: orgUnits.name,
+					is_primary_unit: userAssignments.is_primary_unit
+				})
+				.from(userAssignments)
+				.innerJoin(roles, eq(userAssignments.role_id, roles.id))
+				.innerJoin(orgUnits, eq(userAssignments.org_unit_id, orgUnits.id))
+				.where(eq(orgUnits.agency_id, agencyFilter))
+		: await db
+				.select({
+					id: userAssignments.id,
+					user_id: userAssignments.user_id,
+					role_id: userAssignments.role_id,
+					role_name: roles.name,
+					org_unit_id: userAssignments.org_unit_id,
+					org_unit_name: orgUnits.name,
+					is_primary_unit: userAssignments.is_primary_unit
+				})
+				.from(userAssignments)
+				.innerJoin(roles, eq(userAssignments.role_id, roles.id))
+				.innerJoin(orgUnits, eq(userAssignments.org_unit_id, orgUnits.id));
 
 	const allRoles = await db.select().from(roles);
-	const allOrgUnits = await db.select().from(orgUnits);
+
+	// Org units scoped by agency
+	const allOrgUnits = agencyFilter
+		? await db.select().from(orgUnits).where(eq(orgUnits.agency_id, agencyFilter))
+		: await db.select().from(orgUnits);
+
 	const allAgencies = await db.select().from(agencies);
 
 	return {
@@ -58,7 +97,8 @@ export const load: PageServerLoad = async ({ url }) => {
 		roles: allRoles,
 		orgUnits: allOrgUnits,
 		agencies: allAgencies,
-		search
+		search,
+		agencyFilter
 	};
 };
 
@@ -80,7 +120,8 @@ export const actions: Actions = {
 				agency_id: agency_id ?? null,
 				position: position ?? null,
 				position_rank: position_rank ?? null,
-				email: email ?? null
+				email: email ?? null,
+				profile_completed: true
 			});
 
 			return { success: true, message: 'สร้างผู้ใช้งานสำเร็จ' };

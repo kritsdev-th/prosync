@@ -152,6 +152,7 @@
 
 	function selectFy(fyId: number) {
 		const params = new URLSearchParams();
+		if (data.selectedProvinceId) params.set('province_id', String(data.selectedProvinceId));
 		if (data.selectedAgencyId) params.set('agency_id', String(data.selectedAgencyId));
 		params.set('fy_id', String(fyId));
 		goto(`/planning?${params.toString()}`);
@@ -296,11 +297,20 @@
 		<div class="flex items-center gap-4">
 			<h1 class="shrink-0 text-2xl font-bold" style="color: var(--color-slate-900)">แผนยุทธศาสตร์</h1>
 
-			{#if data.user.is_super_admin && data.agencies.length > 0}
-				<select onchange={(e) => goto(`/planning?agency_id=${(e.target as HTMLSelectElement).value}`)}
+			{#if data.user.is_super_admin}
+				<select onchange={(e) => { const v = (e.target as HTMLSelectElement).value; goto(v ? `/planning?province_id=${v}` : '/planning'); }}
 					class="shrink-0 rounded-md px-2 py-1 text-[0.75rem]"
 					style="border: 1px solid var(--color-slate-200); color: var(--color-slate-700); background: white; outline: none">
-					<option value="">-- หน่วยงาน --</option>
+					<option value="">-- จังหวัด --</option>
+					{#each data.provinces as p}
+						<option value={p.id} selected={data.selectedProvinceId === p.id}>{p.name}</option>
+					{/each}
+				</select>
+				<select onchange={(e) => { const v = (e.target as HTMLSelectElement).value; if (v && data.selectedProvinceId) goto(`/planning?province_id=${data.selectedProvinceId}&agency_id=${v}`); }}
+					disabled={!data.selectedProvinceId}
+					class="shrink-0 rounded-md px-2 py-1 text-[0.75rem]"
+					style="border: 1px solid var(--color-slate-200); color: {data.selectedProvinceId ? 'var(--color-slate-700)' : 'var(--color-slate-300)'}; background: white; outline: none; opacity: {data.selectedProvinceId ? '1' : '0.6'}">
+					<option value="">{data.selectedProvinceId && data.agencies.length === 0 ? '-- ไม่มีหน่วยงาน --' : '-- หน่วยงาน --'}</option>
 					{#each data.agencies as agency}
 						<option value={agency.id} selected={data.selectedAgencyId === agency.id}>{agency.name}</option>
 					{/each}

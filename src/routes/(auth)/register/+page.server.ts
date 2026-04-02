@@ -88,6 +88,8 @@ export const actions: Actions = {
 				name: newUser.name,
 				agency_id: newUser.agency_id,
 				is_super_admin: newUser.is_super_admin,
+				is_director: false,
+				profile_completed: false,
 				primary_org_unit_id: primaryOrgUnitId,
 				permissions: merged
 			};
