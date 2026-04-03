@@ -21,7 +21,7 @@
 	<BackButton href="/admin/org-structure" label="กลับหน้าโครงสร้าง" />
 	<div class="mt-3 flex items-start justify-between gap-4">
 		<div>
-			<h1 class="text-2xl font-bold" style="color: var(--color-slate-900)">{data.unit.name}</h1>
+			<h1 style="margin: 0 0 4px 0; font-size: clamp(1.375rem, 1.1rem + 0.7vw, 1.625rem); font-weight: 700; color: oklch(0.2 0.02 180); letter-spacing: -0.01em;">{data.unit.name}</h1>
 			<div class="mt-1 flex items-center gap-3">
 				{#if data.unit.head_name}
 					<p class="text-sm" style="color: var(--color-slate-500)">

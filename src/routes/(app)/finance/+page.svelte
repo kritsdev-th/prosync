@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { formatBaht, formatNumber, exportToCsv } from '$lib/utils/format';
 
 	let { data, form: formResult } = $props();
@@ -40,8 +41,7 @@
 </script>
 
 <div>
-	<h1 class="text-2xl font-bold text-gray-900">การเงินและเบิกจ่าย</h1>
-	<p class="mt-1 text-sm text-gray-500">จัดการฎีกาเบิกจ่าย บัญชีธนาคาร และภาษี</p>
+	<PageHeader title="การเงินและเบิกจ่าย" subtitle="จัดการฎีกาเบิกจ่าย บัญชีธนาคาร และภาษี" />
 
 	{#if data.user.is_super_admin && data.agencies.length > 0}
 		<div class="mt-4">

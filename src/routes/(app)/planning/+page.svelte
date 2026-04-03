@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { formatBaht } from '$lib/utils/format';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 
 	let { data } = $props();
 	let showCreateModal = $state(false);
@@ -304,13 +305,13 @@
 	</div>
 {/snippet}
 
-<!-- Page Layout: full-height fixed frame -->
-<div class="flex flex-col" style="max-width: 72rem; margin: 0 auto; padding: 0.75rem clamp(1rem, 3vw, 2rem); height: calc(100vh - 3.5rem)">
+<div>
+	<PageHeader title="แผนยุทธศาสตร์" subtitle="จัดการแผนงาน งบประมาณ และติดตามผลการดำเนินงาน" />
+
 	<!-- Compact Header -->
 	<div class="shrink-0">
-		<!-- Row 1: Title + Agency selector + FY tabs + Actions — all in one line -->
+		<!-- Row 1: Agency selector + FY tabs + Actions — all in one line -->
 		<div class="flex items-center gap-4">
-			<h1 class="shrink-0 text-2xl font-bold" style="color: var(--color-slate-900)">แผนยุทธศาสตร์</h1>
 
 			{#if data.user.is_super_admin}
 				<select onchange={(e) => { const v = (e.target as HTMLSelectElement).value; goto(v ? `/planning?province_id=${v}` : '/planning'); }}
@@ -432,8 +433,8 @@
 		</div>
 	</div>
 
-	<!-- Plan Tree: scrollable area fills remaining height -->
-	<div class="mt-2 min-h-0 flex-1 overflow-y-auto rounded-lg" style="border: 1px solid var(--color-slate-100); background: white; scrollbar-width: thin; scrollbar-color: var(--color-slate-300) transparent">
+	<!-- Plan Tree: scrollable area -->
+	<div class="mt-2 overflow-y-auto rounded-lg" style="max-height: calc(100vh - 22rem); border: 1px solid var(--color-slate-100); background: white; scrollbar-width: thin; scrollbar-color: var(--color-slate-300) transparent">
 		<div class="p-4">
 			{#if tree.length === 0}
 				<div class="py-16 text-center" style="color: var(--color-slate-400)">

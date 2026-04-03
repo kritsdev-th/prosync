@@ -61,7 +61,7 @@
 	}
 
 	.compact .header-title {
-		font-size: clamp(1.125rem, 1rem + 0.4vw, 1.375rem);
+		font-size: clamp(1.25rem, 1.05rem + 0.5vw, 1.5rem);
 		margin-bottom: 2px;
 	}
 
@@ -82,11 +82,11 @@
 	}
 
 	.header-title {
-		margin: 0 0 6px 0;
-		font-size: clamp(1.5rem, 1.2rem + 0.8vw, 2rem);
+		margin: 0 0 4px 0;
+		font-size: clamp(1.375rem, 1.1rem + 0.7vw, 1.625rem);
 		font-weight: 700;
 		color: oklch(0.98 0.005 180);
-		letter-spacing: -0.02em;
+		letter-spacing: -0.01em;
 	}
 
 	.header-subtitle {

@@ -39,18 +39,18 @@
 
 <div>
 	<BackButton href="/org-management" label="กลับหน้าโครงสร้างองค์กร" />
-	<div class="mt-3 flex items-center justify-between">
+	<div style="display: flex; align-items: flex-start; justify-content: space-between; margin: 20px 0 24px; gap: 16px;">
 		<div>
-			<h1 class="text-2xl font-bold text-gray-900">จัดการผู้ใช้งาน</h1>
-			<p class="mt-1 text-sm text-gray-500">ค้นหา เพิ่ม แก้ไข ลบ ผู้ใช้งาน และจัดการสิทธิ์</p>
+			<h1 style="margin: 0 0 4px 0; font-size: clamp(1.375rem, 1.1rem + 0.7vw, 1.625rem); font-weight: 700; color: oklch(0.2 0.02 180); letter-spacing: -0.01em;">จัดการผู้ใช้งาน</h1>
+			<p style="margin: 0; font-size: 0.875rem; color: oklch(0.5 0.02 180);">ค้นหา เพิ่ม แก้ไข ลบ ผู้ใช้งาน และจัดการสิทธิ์</p>
 		</div>
-		<div class="flex gap-2">
-			<button onclick={handleExportCsv} class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+		<div style="display: flex; gap: 10px; flex-shrink: 0;">
+			<button onclick={handleExportCsv} style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 10px; border: 1px solid oklch(0.88 0.01 180); background: oklch(0.98 0.005 180); color: oklch(0.35 0.02 180); font-size: 0.875rem; font-weight: 500; cursor: pointer;">
 				ส่งออก CSV
 			</button>
 			<button
 				onclick={() => (showCreateModal = true)}
-				class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+				style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border-radius: 10px; border: none; background: oklch(0.52 0.14 240); color: oklch(0.98 0.005 180); font-size: 0.875rem; font-weight: 500; cursor: pointer;"
 			>
 				เพิ่มผู้ใช้งาน
 			</button>

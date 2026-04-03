@@ -73,7 +73,7 @@
 		</header>
 
 		<!-- Main content -->
-		<main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+		<main class="flex-1 overflow-y-auto" style="padding: clamp(16px, 2vw, 28px);">
 			<div class="mx-auto max-w-7xl animate-in">
 				{@render children()}
 			</div>

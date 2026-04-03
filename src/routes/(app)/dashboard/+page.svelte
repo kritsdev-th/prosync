@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatBaht } from '$lib/utils/format';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ScopeSelector from '$lib/components/ScopeSelector.svelte';
 	import { DonutChart, BarChart, KPICard, ProgressChart, HorizontalBarChart } from '$lib/components/charts';
 	import { DocumentIcon, BuildingIcon, UsersIcon, PlanIcon } from '$lib/components/icons';
@@ -47,34 +48,14 @@
 	}
 </script>
 
-<div class="dashboard-container">
-	<!-- Page Header -->
-	<div class="page-header">
-		<div class="header-content">
-			<div>
-				<h1 class="header-title">แดชบอร์ด</h1>
-				<p class="header-subtitle">
-					ยินดีต้อนรับกลับ, <span class="user-name">{data.user.name}</span>
-					{#if data.user.is_super_admin}
-						<span class="admin-badge">
-							<svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-							</svg>
-							Super Admin
-						</span>
-					{:else if data.user.is_director}
-						<span class="admin-badge director">
-							<svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-							</svg>
-							ผู้อำนวยการ
-						</span>
-					{/if}
-				</p>
-			</div>
-		</div>
-		<div class="header-decoration"></div>
-	</div>
+<div>
+	<PageHeader
+		title="แดชบอร์ด"
+		subtitle=""
+		userName={data.user.name}
+		isSuperAdmin={data.user.is_super_admin}
+		isDirector={data.user.is_director}
+	/>
 
 	<!-- Scope Selector -->
 	<ScopeSelector
@@ -471,79 +452,6 @@
 </div>
 
 <style>
-	.dashboard-container {
-		animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-	}
-
-	/* ── Page Header ── */
-	.page-header {
-		position: relative;
-		overflow: hidden;
-		margin-bottom: 32px;
-		border-radius: 20px;
-		background: linear-gradient(135deg, oklch(0.52 0.14 240), oklch(0.54 0.16 150));
-		padding: 32px;
-		box-shadow: 0 8px 32px oklch(0.52 0.14 240 / 0.15);
-	}
-
-	.header-content {
-		position: relative;
-		z-index: 1;
-	}
-
-	.header-title {
-		margin: 0 0 8px 0;
-		font-size: clamp(1.5rem, 1.2rem + 0.8vw, 2rem);
-		font-weight: 700;
-		color: oklch(0.98 0.005 180);
-		letter-spacing: -0.02em;
-	}
-
-	.header-subtitle {
-		margin: 0;
-		font-size: clamp(0.875rem, 0.75rem + 0.4vw, 1rem);
-		color: oklch(0.98 0.005 180 / 0.85);
-		line-height: 1.6;
-	}
-
-	.user-name {
-		font-weight: 600;
-		color: oklch(0.98 0.005 180);
-	}
-
-	.admin-badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		margin-left: 8px;
-		padding: 4px 12px;
-		border-radius: 999px;
-		background: oklch(0.98 0.005 180 / 0.2);
-		backdrop-filter: blur(8px);
-		font-size: 0.75rem;
-		font-weight: 500;
-		color: oklch(0.98 0.005 180);
-	}
-
-	.admin-badge.director {
-		background: oklch(0.54 0.16 150 / 0.3);
-	}
-
-	.badge-icon {
-		width: 14px;
-		height: 14px;
-	}
-
-	.header-decoration {
-		position: absolute;
-		top: -40px;
-		right: -40px;
-		width: 200px;
-		height: 200px;
-		border-radius: 50%;
-		background: oklch(0.98 0.005 180 / 0.08);
-		pointer-events: none;
-	}
 
 	/* ── Agency Banner ── */
 	.agency-banner {
@@ -1092,10 +1000,6 @@
 	}
 
 	@media (max-width: 640px) {
-		.page-header {
-			padding: 24px;
-		}
-
 		.kpi-row {
 			grid-template-columns: 1fr;
 		}
