@@ -13,9 +13,8 @@
     "db:seed": "tsx src/lib/server/db/seed.ts",
     "db:triggers": "docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/custom/0001_triggers.sql",
     "db:add-plan-fields": "docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/custom/0002_add_plan_fields.sql",
-    "db:custom": "docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/custom/0001_triggers.sql && docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/custom/0002_add_plan_fields.sql",
+    "db:custom": "docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/custom/0001_triggers.sql && docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/custom/0002_add_plan_fields.sql && docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/custom/0003_add_profile_completed.sql",
     "db:reset": "docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/reset.sql && npm run db:push && npm run db:custom"
-  
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^6.0.0",
@@ -39,6 +38,7 @@
     "jose": "^6.0.0",
     "mongodb": "^6.12.0",
     "postgres": "^3.4.0",
+    "recharts": "^3.8.1",
     "zod": "^3.24.0"
   },
   "type": "module"
