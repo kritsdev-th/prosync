@@ -11,6 +11,7 @@
 		selectedOrgUnitId?: number | null;
 		isSuperAdmin?: boolean;
 		isDirector?: boolean;
+		basePath?: string;
 	}
 
 	let {
@@ -21,7 +22,8 @@
 		selectedAgencyId = null,
 		selectedOrgUnitId = null,
 		isSuperAdmin = false,
-		isDirector = false
+		isDirector = false,
+		basePath = '/dashboard'
 	}: Props = $props();
 
 	let provinceId = $state(selectedProvinceId);
@@ -47,7 +49,7 @@
 		if (orgUnitId) params.set('org_unit_id', String(orgUnitId));
 
 		const queryString = params.toString();
-		goto(`/dashboard${queryString ? `?${queryString}` : ''}`, { replaceState: true });
+		goto(`${basePath}${queryString ? `?${queryString}` : ''}`, { replaceState: true });
 	}
 
 	function handleProvinceChange(event: Event) {

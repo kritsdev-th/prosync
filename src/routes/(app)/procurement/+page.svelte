@@ -1,158 +1,68 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { goto } from '$app/navigation';
-	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import Pagination from '$lib/components/Pagination.svelte';
-	import { formatThaiDateTime, formatBaht, exportToCsv } from '$lib/utils/format';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 
-	let { data, form: formResult } = $props();
-	let showCreateModal = $state(false);
-	let currentPage = $state(1);
-	const perPage = 20;
-
-	let paginatedDocs = $derived(
-		data.documents.slice((currentPage - 1) * perPage, currentPage * perPage)
-	);
-
-	function handleExportCsv() {
-		exportToCsv('procurement-documents', [
-			{ key: 'id', label: 'รหัส' },
-			{ key: 'workflow_name', label: 'วิธีจัดซื้อ' },
-			{ key: 'plan_title', label: 'แผนงาน' },
-			{ key: 'status', label: 'สถานะ' }
-		], data.documents);
-	}
+	// hub page — no data needed
 </script>
 
 <div>
-	<div class="flex items-center justify-between">
-		<div>
-			<h1 class="text-2xl font-bold text-gray-900">จัดซื้อจัดจ้าง</h1>
-			<p class="mt-1 text-sm text-gray-500">จัดการเอกสารจัดซื้อจัดจ้างตาม Workflow</p>
-		</div>
-		<div class="flex gap-2">
-			<button
-				onclick={handleExportCsv}
-				class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-			>
-				ส่งออก CSV
-			</button>
-			<button
-				onclick={() => (showCreateModal = true)}
-				class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-			>
-				สร้างเอกสารจัดซื้อ
-			</button>
-		</div>
-	</div>
+	<PageHeader title="จัดซื้อจัดจ้าง" subtitle="จัดการวิธีการจัดซื้อจัดจ้างและทำเอกสาร" />
 
-	{#if data.user.is_super_admin && data.agencies.length > 0}
-		<div class="mt-4">
-			<select
-				onchange={(e) => goto(`/procurement?agency_id=${(e.target as HTMLSelectElement).value}`)}
-				class="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-			>
-				<option value="">-- เลือกหน่วยงาน --</option>
-				{#each data.agencies as agency}
-					<option value={agency.id} selected={data.selectedAgencyId === agency.id}>{agency.name}</option>
-				{/each}
-			</select>
-		</div>
-	{/if}
+	<div class="card-grid">
+		<a href="/procurement/workflows" class="nav-card">
+			<div class="card-icon-wrap" style="background: oklch(0.55 0.12 280 / 0.08);">
+				<svg class="card-icon" style="color: oklch(0.55 0.12 280);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066" />
+					<path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+				</svg>
+			</div>
+			<div class="card-body">
+				<h3 class="card-title">จัดการวิธีจัดซื้อจัดจ้าง</h3>
+				<p class="card-desc">สร้าง/แก้ไข วิธีการจัดซื้อ กำหนดขั้นตอนและ Template การทำงาน</p>
+			</div>
+			<svg class="card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+			</svg>
+		</a>
 
-	{#if formResult?.message}
-		<div class="mt-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700">{formResult.message}</div>
-	{/if}
-	{#if formResult?.errors?.plan_id}
-		<div class="mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{formResult.errors.plan_id[0]}</div>
-	{/if}
-
-	<!-- Documents Table -->
-	<div class="mt-6 overflow-hidden rounded-xl border bg-white shadow-sm">
-		<table class="w-full text-left text-sm">
-			<thead class="border-b bg-gray-50">
-				<tr>
-					<th class="px-4 py-3 font-medium text-gray-600">#</th>
-					<th class="px-4 py-3 font-medium text-gray-600">วิธีจัดซื้อ</th>
-					<th class="px-4 py-3 font-medium text-gray-600">แผนงาน</th>
-					<th class="px-4 py-3 font-medium text-gray-600">สถานะ</th>
-					<th class="px-4 py-3 font-medium text-gray-600">จัดการ</th>
-				</tr>
-			</thead>
-			<tbody class="divide-y">
-				{#each paginatedDocs as doc}
-					<tr class="hover:bg-gray-50">
-						<td class="px-4 py-3 font-mono text-gray-500">{doc.id}</td>
-						<td class="px-4 py-3">{doc.workflow_name}</td>
-						<td class="px-4 py-3 font-medium">{doc.plan_title}</td>
-						<td class="px-4 py-3">
-							<StatusBadge status={doc.status} />
-						</td>
-						<td class="px-4 py-3">
-							<a
-								href="/procurement/{doc.id}"
-								class="rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
-							>
-								ดูรายละเอียด
-							</a>
-						</td>
-					</tr>
-				{:else}
-					<tr>
-						<td colspan="5" class="px-4 py-8 text-center text-gray-500">ไม่มีเอกสารจัดซื้อจัดจ้าง</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-		<Pagination totalItems={data.documents.length} bind:currentPage {perPage} />
+		<a href="/procurement/documents" class="nav-card">
+			<div class="card-icon-wrap" style="background: oklch(0.52 0.14 240 / 0.08);">
+				<svg class="card-icon" style="color: oklch(0.52 0.14 240);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+				</svg>
+			</div>
+			<div class="card-body">
+				<h3 class="card-title">ทำเอกสารจัดซื้อจัดจ้าง</h3>
+				<p class="card-desc">สร้างเอกสาร เชื่อมแผนงาน เลือกวิธีจัดซื้อ และดำเนินการตามขั้นตอน</p>
+			</div>
+			<svg class="card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+			</svg>
+		</a>
 	</div>
 </div>
 
-{#if showCreateModal}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-		<div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
-			<h2 class="text-lg font-bold text-gray-900">สร้างเอกสารจัดซื้อจัดจ้าง</h2>
-			<form
-				method="POST"
-				action="?/createDocument"
-				use:enhance={() => {
-					return async ({ update, result }) => {
-						if (result.type === 'success') showCreateModal = false;
-						await update();
-					};
-				}}
-			>
-				<input type="hidden" name="agency_id" value={data.selectedAgencyId || ''} />
-				<div class="mt-4 space-y-3">
-					<div>
-						<label class="block text-sm font-medium text-gray-700">วิธีจัดซื้อจัดจ้าง <span class="text-red-500">*</span></label>
-						<select name="workflow_id" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
-							<option value="">-- เลือกวิธี --</option>
-							{#each data.workflows as wf}
-								<option value={wf.id}>{wf.name} ({wf.total_steps} ขั้นตอน)</option>
-							{/each}
-						</select>
-					</div>
-					<div>
-						<label class="block text-sm font-medium text-gray-700">แผนงาน (Leaf Node) <span class="text-red-500">*</span></label>
-						<select name="plan_id" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
-							<option value="">-- เลือกแผนงาน --</option>
-							{#each data.leafPlans as plan}
-								<option value={plan.id}>
-									[ปี {plan.fiscal_year}] {plan.title} (งบ {formatBaht(plan.estimated_amount)})
-								</option>
-							{/each}
-						</select>
-						{#if formResult?.errors?.plan_id}
-							<p class="mt-1 text-sm text-red-600">{formResult.errors.plan_id[0]}</p>
-						{/if}
-					</div>
-				</div>
-				<div class="mt-6 flex justify-end gap-2">
-					<button type="button" onclick={() => (showCreateModal = false)} class="rounded-lg border px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">ยกเลิก</button>
-					<button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">สร้างเอกสาร</button>
-				</div>
-			</form>
-		</div>
-	</div>
-{/if}
+<style>
+	.card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+
+	.nav-card {
+		display: flex; align-items: center; gap: 16px; padding: 24px;
+		border-radius: 16px; background: oklch(0.995 0.002 180);
+		border: 1px solid oklch(0.92 0.005 180); text-decoration: none;
+		animation: card-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+		transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+	}
+	.nav-card:nth-child(2) { animation-delay: 0.08s; }
+	.nav-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px oklch(0.52 0.14 240 / 0.1); border-color: oklch(0.52 0.14 240 / 0.2); }
+
+	.card-icon-wrap { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+	.card-icon { width: 24px; height: 24px; }
+	.card-body { flex: 1; min-width: 0; }
+	.card-title { margin: 0 0 4px 0; font-size: 1rem; font-weight: 600; color: oklch(0.2 0.02 180); }
+	.card-desc { margin: 0; font-size: 0.8125rem; color: oklch(0.5 0.02 180); line-height: 1.4; }
+	.card-arrow { width: 20px; height: 20px; color: oklch(0.7 0.01 180); flex-shrink: 0; transition: transform 0.2s ease, color 0.2s ease; }
+	.nav-card:hover .card-arrow { transform: translateX(4px); color: oklch(0.52 0.14 240); }
+
+	@keyframes card-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+	@media (max-width: 768px) { .card-grid { grid-template-columns: 1fr; } }
+</style>
