@@ -1,16 +1,50 @@
 <script lang="ts">
 	import { formatBaht } from '$lib/utils/format';
 	import ScopeSelector from '$lib/components/ScopeSelector.svelte';
-	import { DonutChart, BarChart, KPICard, ProgressChart } from '$lib/components/charts';
-	import { ChartBarIcon, DocumentIcon, BuildingIcon, UsersIcon } from '$lib/components/icons';
+	import { DonutChart, BarChart, KPICard, ProgressChart, HorizontalBarChart } from '$lib/components/charts';
+	import { DocumentIcon, BuildingIcon, UsersIcon, PlanIcon } from '$lib/components/icons';
 
 	let { data } = $props();
-	const stats = data.stats as Record<string, any>;
-	const chartData = data.chartData as Record<string, any>;
-	const filters = data.filters as { provinceId: number | null; agencyId: number | null; orgUnitId: number | null };
+	let stats = $derived(data.stats as Record<string, any>);
+	let chartData = $derived(data.chartData as Record<string, any>);
+	let filters = $derived(data.filters as { provinceId: number | null; agencyId: number | null; orgUnitId: number | null });
 
-	// Check if scope is selected
-	let hasScopeSelected = $derived(filters.provinceId !== null && filters.agencyId !== null);
+	let hasScopeSelected = $derived(
+		data.user.is_director
+			? true
+			: (filters.provinceId !== null && filters.agencyId !== null)
+	);
+
+	// Budget helpers
+	let budgetSummary = $derived(chartData.budgetSummary as {
+		income: { estimated: number; actual: number };
+		expense: { estimated: number; actual: number };
+	} | undefined);
+
+	let totalEstimated = $derived(
+		budgetSummary
+			? budgetSummary.income.estimated + budgetSummary.expense.estimated
+			: 0
+	);
+	let totalActual = $derived(
+		budgetSummary
+			? budgetSummary.income.actual + budgetSummary.expense.actual
+			: 0
+	);
+	let totalRemaining = $derived(totalEstimated - totalActual);
+	let utilizationPct = $derived(
+		totalEstimated > 0 ? ((totalActual / totalEstimated) * 100).toFixed(1) : '0.0'
+	);
+
+	// Plan execution
+	let planExec = $derived(stats.planExecutionRate as { total: number; started: number; percentage: string } | undefined);
+
+	// Format helper
+	function fmtBahtShort(val: number): string {
+		if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
+		if (val >= 1_000) return `${(val / 1_000).toFixed(0)}K`;
+		return val.toLocaleString();
+	}
 </script>
 
 <div class="dashboard-container">
@@ -26,7 +60,14 @@
 							<svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 								<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
 							</svg>
-							Administrator
+							Super Admin
+						</span>
+					{:else if data.user.is_director}
+						<span class="admin-badge director">
+							<svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+							</svg>
+							ผู้อำนวยการ
 						</span>
 					{/if}
 				</p>
@@ -43,180 +84,398 @@
 		selectedProvinceId={filters.provinceId}
 		selectedAgencyId={filters.agencyId}
 		selectedOrgUnitId={filters.orgUnitId}
+		isSuperAdmin={data.user.is_super_admin}
+		isDirector={data.user.is_director}
 	/>
 
-	{#if hasScopeSelected || data.user.is_super_admin}
-		<!-- KPI Summary Cards -->
-		<div class="kpi-grid">
-			{#if data.user.is_super_admin && stats.totalAgencies !== undefined}
-				<KPICard
-					title="หน่วยงานทั้งหมด"
-					value={stats.totalAgencies}
-					icon={BuildingIcon}
-					color="oklch(0.52 0.14 240)"
-				/>
-			{/if}
-
-			{#if data.user.is_super_admin && stats.totalUsers !== undefined}
-				<KPICard
-					title="ผู้ใช้งานระบบ"
-					value={stats.totalUsers}
-					icon={UsersIcon}
-					color="oklch(0.54 0.16 150)"
-				/>
-			{/if}
-
-			{#if stats.activeDocuments !== undefined}
-				<KPICard
-					title="เอกสารดำเนินการ"
-					value={stats.activeDocuments}
-					icon={DocumentIcon}
-					color="oklch(0.52 0.14 240)"
-				/>
-			{/if}
-
-			{#if stats.pendingDikaVouchers !== undefined}
-				<KPICard
-					title="ฎีการอตรวจสอบ"
-					value={stats.pendingDikaVouchers}
-					color="oklch(0.62 0.18 60)"
-				/>
-			{/if}
-		</div>
-
-		<!-- Budget Summary (if available) -->
-		{#if chartData.agencyBudget}
-			<div class="budget-summary-card">
-				<div class="card-header">
-					<h3 class="card-title">สรุปงบประมาณ</h3>
+	{#if hasScopeSelected}
+		<!-- ═══ Agency Context Banner ═══ -->
+		{#if data.selectedAgencyName}
+			<div class="agency-banner">
+				<div class="agency-banner-icon">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+					</svg>
+				</div>
+				<div class="agency-banner-text">
+					<span class="agency-banner-name">{data.selectedAgencyName}</span>
 					{#if stats.fiscalYear}
-						<span class="card-badge">ปี {stats.fiscalYear.year_name}</span>
+						<span class="agency-banner-fy">ปีงบประมาณ {stats.fiscalYear.year_name}</span>
 					{/if}
 				</div>
-				<div class="budget-metrics">
-					<div class="budget-metric">
-						<div class="metric-label">งบประมาณทั้งหมด</div>
-						<div class="metric-value primary">{formatBaht(chartData.agencyBudget.total)}</div>
-					</div>
-					<div class="budget-metric">
-						<div class="metric-label">ใช้ไปแล้ว</div>
-						<div class="metric-value success">{formatBaht(chartData.agencyBudget.used)}</div>
-					</div>
-					<div class="budget-metric">
-						<div class="metric-label">คงเหลือ</div>
-						<div class="metric-value {chartData.agencyBudget.remaining >= 0 ? 'success' : 'error'}">
-							{formatBaht(chartData.agencyBudget.remaining)}
+			</div>
+		{/if}
+
+		<!-- ═══ SECTION 1: KPI Cards (6 cards, 2 rows) ═══ -->
+		<div class="kpi-row">
+			<KPICard
+				title="หน่วยงานย่อย"
+				value={stats.agencyOrgUnits ?? 0}
+				icon={BuildingIcon}
+				color="oklch(0.52 0.14 240)"
+			/>
+			<KPICard
+				title="บุคลากร"
+				value={stats.agencyUsers ?? 0}
+				icon={UsersIcon}
+				color="oklch(0.54 0.16 150)"
+			/>
+			<KPICard
+				title="แผนงานทั้งหมด"
+				value={stats.totalPlans ?? 0}
+				subtitle={planExec ? `ดำเนินการแล้ว ${planExec.started}/${planExec.total} (${planExec.percentage}%)` : undefined}
+				icon={PlanIcon}
+				color="oklch(0.55 0.12 280)"
+			/>
+			<KPICard
+				title="เอกสารดำเนินการ"
+				value={stats.activeDocuments ?? 0}
+				subtitle="จากทั้งหมด {stats.totalDocuments ?? 0} | สำเร็จ {stats.completedDocuments ?? 0}"
+				icon={DocumentIcon}
+				color="oklch(0.52 0.14 240)"
+			/>
+			<KPICard
+				title="ฎีการอตรวจสอบ"
+				value={stats.pendingDikaVouchers ?? 0}
+				subtitle="จากทั้งหมด {stats.totalDikaVouchers ?? 0} | จ่ายแล้ว {stats.paidDikaVouchers ?? 0}"
+				color="oklch(0.62 0.18 60)"
+			/>
+			<KPICard
+				title="ยอดฎีกาสุทธิ"
+				value={formatBaht(stats.totalDikaNet ?? 0)}
+				subtitle="ภาษี {formatBaht(stats.totalDikaTax ?? 0)}"
+				color="oklch(0.54 0.16 150)"
+			/>
+		</div>
+
+		<!-- ═══ SECTION 2: Budget Overview ═══ -->
+		{#if budgetSummary}
+			<div class="section-header">
+				<h2 class="section-title">ภาพรวมงบประมาณ</h2>
+			</div>
+			<div class="budget-section">
+				<div class="budget-overview">
+					<div class="budget-main">
+						<h3 class="label-sm">งบประมาณรวม</h3>
+						<div class="budget-big-number">{formatBaht(totalEstimated)}</div>
+						<div class="budget-bar-container">
+							<div
+								class="budget-bar-fill"
+								style="width: {Math.min(Number(utilizationPct), 100)}%;"
+							></div>
+						</div>
+						<div class="budget-bar-legend">
+							<span>ใช้ไปแล้ว {utilizationPct}% ({formatBaht(totalActual)})</span>
+							<span>คงเหลือ {formatBaht(totalRemaining)}</span>
 						</div>
 					</div>
-					<div class="budget-metric">
-						<div class="metric-label">อัตราการใช้</div>
-						<div class="metric-value">
-							{chartData.agencyBudget.total > 0 ? ((chartData.agencyBudget.used / chartData.agencyBudget.total) * 100).toFixed(1) : 0}%
+					<div class="budget-breakdown">
+						<div class="budget-type-card">
+							<div class="type-indicator income-indicator"></div>
+							<div class="type-info">
+								<div class="type-label">รายได้</div>
+								<div class="type-estimated">{formatBaht(budgetSummary.income.estimated)}</div>
+								<div class="type-progress-track">
+									<div
+										class="type-progress-fill income-fill"
+										style="width: {budgetSummary.income.estimated > 0 ? Math.min((budgetSummary.income.actual / budgetSummary.income.estimated) * 100, 100) : 0}%;"
+									></div>
+								</div>
+								<div class="type-actual">
+									รับจริง {formatBaht(budgetSummary.income.actual)}
+									<span class="type-pct">
+										({budgetSummary.income.estimated > 0 ? ((budgetSummary.income.actual / budgetSummary.income.estimated) * 100).toFixed(1) : '0.0'}%)
+									</span>
+								</div>
+							</div>
+						</div>
+						<div class="budget-type-card">
+							<div class="type-indicator expense-indicator"></div>
+							<div class="type-info">
+								<div class="type-label">รายจ่าย</div>
+								<div class="type-estimated">{formatBaht(budgetSummary.expense.estimated)}</div>
+								<div class="type-progress-track">
+									<div
+										class="type-progress-fill expense-fill"
+										style="width: {budgetSummary.expense.estimated > 0 ? Math.min((budgetSummary.expense.actual / budgetSummary.expense.estimated) * 100, 100) : 0}%;"
+									></div>
+								</div>
+								<div class="type-actual">
+									จ่ายจริง {formatBaht(budgetSummary.expense.actual)}
+									<span class="type-pct">
+										({budgetSummary.expense.estimated > 0 ? ((budgetSummary.expense.actual / budgetSummary.expense.estimated) * 100).toFixed(1) : '0.0'}%)
+									</span>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
 			</div>
 		{/if}
 
-		<!-- Charts Grid -->
-		<div class="charts-grid">
-			<!-- Document Status Donut Chart -->
+		<!-- ═══ SECTION 3: Plans & Budget Drill-down ═══ -->
+		<div class="section-header">
+			<h2 class="section-title">แผนงานและงบประมาณ</h2>
+		</div>
+		<div class="grid-2col-asymmetric">
+			<!-- Top parent plans -->
+			{#if chartData.topParentPlans && chartData.topParentPlans.length > 0}
+				<ProgressChart
+					title="แผนงานหลัก"
+					subtitle="การใช้จ่ายงบประมาณตามแผนหลัก"
+					items={chartData.topParentPlans}
+				/>
+			{/if}
+
+			<!-- Plan type donut -->
+			{#if chartData.planType && chartData.planType.length > 0}
+				<div class="stack-2">
+					<DonutChart
+						title="สัดส่วนแผนงาน"
+						subtitle="รายได้ vs รายจ่าย"
+						data={chartData.planType}
+					/>
+
+					<!-- Plan execution gauge -->
+					{#if planExec}
+						<div class="gauge-card">
+							<h3 class="gauge-title">อัตราดำเนินการแผน</h3>
+							<div class="gauge-container">
+								<svg viewBox="0 0 120 70" class="gauge-svg">
+									<path
+										d="M 10 65 A 50 50 0 0 1 110 65"
+										fill="none"
+										stroke="oklch(0.92 0.005 180)"
+										stroke-width="10"
+										stroke-linecap="round"
+									/>
+									<path
+										d="M 10 65 A 50 50 0 0 1 110 65"
+										fill="none"
+										stroke="oklch(0.54 0.16 150)"
+										stroke-width="10"
+										stroke-linecap="round"
+										stroke-dasharray="{Number(planExec.percentage) / 100 * 157} 157"
+										class="gauge-fill"
+									/>
+								</svg>
+								<div class="gauge-value">{planExec.percentage}%</div>
+							</div>
+							<div class="gauge-meta">
+								<span>{planExec.started} จาก {planExec.total} แผนงาน</span>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</div>
+
+		<!-- Budget by org unit -->
+		{#if chartData.budgetByUnit && chartData.budgetByUnit.length > 0}
+			<div class="full-width-card">
+				<ProgressChart
+					title="งบประมาณแยกตามหน่วยงานย่อย"
+					subtitle="หน่วยงานที่มีงบประมาณสูงสุด"
+					items={chartData.budgetByUnit}
+				/>
+			</div>
+		{/if}
+
+		<!-- ═══ SECTION 4: Documents & Procurement ═══ -->
+		<div class="section-header">
+			<h2 class="section-title">เอกสารและจัดซื้อจัดจ้าง</h2>
+		</div>
+		<div class="grid-3col">
 			{#if chartData.documentStatus && chartData.documentStatus.length > 0}
 				<DonutChart
 					title="สถานะเอกสาร"
-					subtitle="ภาพรวมสถานะเอกสารทั้งหมด"
+					subtitle="แยกตามสถานะปัจจุบัน"
 					data={chartData.documentStatus}
 				/>
 			{/if}
 
-			<!-- Agency Document Status -->
-			{#if chartData.agencyDocumentStatus && chartData.agencyDocumentStatus.length > 0}
-				<DonutChart
-					title="สถานะเอกสารหน่วยงาน"
-					subtitle="แยกตามสถานะ"
-					data={chartData.agencyDocumentStatus}
+			{#if chartData.docsByWorkflow && chartData.docsByWorkflow.length > 0}
+				<BarChart
+					title="เอกสารตามวิธีจัดซื้อ"
+					subtitle="จำนวนเอกสารแต่ละวิธี"
+					data={chartData.docsByWorkflow}
 				/>
 			{/if}
 
-			<!-- Dika Voucher Status -->
+			{#if chartData.approvalStats && chartData.approvalStats.length > 0}
+				<DonutChart
+					title="ผลการอนุมัติ"
+					subtitle="อัตราอนุมัติ vs ไม่อนุมัติ"
+					data={chartData.approvalStats}
+				/>
+			{/if}
+		</div>
+
+		<!-- ═══ SECTION 5: Finance & Dika Vouchers ═══ -->
+		<div class="section-header">
+			<h2 class="section-title">การเงินและฎีกา</h2>
+		</div>
+		<div class="grid-2col">
 			{#if chartData.dikaStatus && chartData.dikaStatus.length > 0}
 				<DonutChart
 					title="สถานะฎีกา"
-					subtitle="การตรวจสอบและอนุมัติ"
+					subtitle="ภาพรวมสถานะฎีกาทั้งหมด"
 					data={chartData.dikaStatus}
 				/>
 			{/if}
 
-			<!-- Plan Type Distribution -->
-			{#if chartData.planType && chartData.planType.length > 0}
-				<DonutChart
-					title="ประเภทแผน"
-					subtitle="รายได้ vs รายจ่าย"
-					data={chartData.planType}
-				/>
-			{/if}
-
-			<!-- Budget Utilization by Agency -->
-			{#if chartData.budgetByAgency && chartData.budgetByAgency.length > 0}
-				<div class="chart-card-wide">
-					<ProgressChart
-						title="การใช้งบประมาณแยกตามหน่วยงาน"
-						subtitle="Top 5 หน่วยงานที่มีงบประมาณสูงสุด"
-						items={chartData.budgetByAgency}
-					/>
-				</div>
-			{/if}
-
-			<!-- Monthly Documents Trend -->
-			{#if chartData.monthlyDocuments && chartData.monthlyDocuments.length > 0}
-				<div class="chart-card-wide">
-					<BarChart
-						title="แนวโน้มเอกสารรายเดือน"
-						subtitle="6 เดือนล่าสุด"
-						data={chartData.monthlyDocuments}
-					/>
+			<!-- Dika amounts table -->
+			{#if chartData.dikaAmounts && chartData.dikaAmounts.length > 0}
+				<div class="table-card">
+					<h3 class="table-title">ยอดเงินฎีกาแยกตามสถานะ</h3>
+					<p class="table-subtitle">สรุปยอดเงินรวม ภาษี และยอดสุทธิ</p>
+					<div class="table-wrap">
+						<table class="data-table">
+							<thead>
+								<tr>
+									<th>สถานะ</th>
+									<th class="num">จำนวน</th>
+									<th class="num">ยอดรวม</th>
+									<th class="num">ภาษี</th>
+									<th class="num">สุทธิ</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each chartData.dikaAmounts as item}
+									<tr>
+										<td>
+											<span class="status-dot" style="background: {item.color};"></span>
+											{item.label}
+										</td>
+										<td class="num">{item.count}</td>
+										<td class="num">{fmtBahtShort(item.grossAmount)}</td>
+										<td class="num">{fmtBahtShort(item.taxAmount)}</td>
+										<td class="num font-semibold">{fmtBahtShort(item.netAmount)}</td>
+									</tr>
+								{/each}
+							</tbody>
+							<tfoot>
+								<tr>
+									<td class="font-semibold">รวม</td>
+									<td class="num">{stats.totalDikaVouchers ?? 0}</td>
+									<td class="num font-semibold">{fmtBahtShort(stats.totalDikaGross ?? 0)}</td>
+									<td class="num">{fmtBahtShort(stats.totalDikaTax ?? 0)}</td>
+									<td class="num font-semibold">{fmtBahtShort(stats.totalDikaNet ?? 0)}</td>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
 				</div>
 			{/if}
 		</div>
 
-		{:else}
-			<!-- Empty State - Prompt to select scope -->
-			<div class="empty-state">
-				<div class="empty-icon">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-					</svg>
+		<!-- Bank accounts + Top vendors -->
+		<div class="grid-2col">
+			<!-- Bank Accounts -->
+			{#if chartData.bankBalances && chartData.bankBalances.length > 0}
+				<div class="table-card">
+					<h3 class="table-title">บัญชีธนาคาร</h3>
+					<p class="table-subtitle">ยอดเงินคงเหลือในแต่ละบัญชี</p>
+					<div class="bank-list">
+						{#each chartData.bankBalances as account}
+							<div class="bank-item">
+								<div class="bank-icon" class:tax-pool={account.isTaxPool}>
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+										{#if account.isTaxPool}
+											<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+										{:else}
+											<path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
+										{/if}
+									</svg>
+								</div>
+								<div class="bank-info">
+									<span class="bank-name">{account.name}</span>
+									<span class="bank-number">{account.number}</span>
+								</div>
+								<div class="bank-balance" class:tax-pool-balance={account.isTaxPool}>
+									{formatBaht(account.balance)}
+								</div>
+							</div>
+						{/each}
+					</div>
 				</div>
-				<h3 class="empty-title">เลือกขอบเขตเพื่อดูข้อมูล</h3>
-				<p class="empty-description">
-					กรุณาเลือกจังหวัดและหน่วยงานด้านบนเพื่อดูข้อมูลเชิงลึกและกราฟวิเคราะห์
-				</p>
-				<div class="empty-hint">
-					<div class="hint-step">
-						<div class="hint-number">1</div>
-						<span>เลือกจังหวัด</span>
-					</div>
-					<div class="hint-arrow">→</div>
-					<div class="hint-step">
-						<div class="hint-number">2</div>
-						<span>เลือกหน่วยงาน</span>
-					</div>
-					<div class="hint-arrow">→</div>
-					<div class="hint-step">
-						<div class="hint-number">3</div>
-						<span>ดูข้อมูลวิเคราะห์</span>
-					</div>
-				</div>
+			{/if}
+
+			<!-- Top Vendors -->
+			{#if chartData.topVendors && chartData.topVendors.length > 0}
+				<HorizontalBarChart
+					title="คู่ค้าที่มียอดสูงสุด"
+					subtitle="จัดอันดับตามยอดฎีการวม"
+					items={chartData.topVendors.map((v: any) => ({
+						label: v.name,
+						value: v.amount,
+						sublabel: `${v.count} รายการ · ${v.type}`,
+					}))}
+					formatValue={(v) => fmtBahtShort(v)}
+				/>
+			{/if}
+		</div>
+
+		<!-- ═══ SECTION 6: Human Resources ═══ -->
+		{#if chartData.staffByRole && chartData.staffByRole.length > 0}
+			<div class="section-header">
+				<h2 class="section-title">บุคลากร</h2>
+			</div>
+			<div class="grid-full">
+				<BarChart
+					title="การกระจายบุคลากรตามตำแหน่ง"
+					subtitle="จำนวนบุคลากรในแต่ละบทบาท"
+					data={chartData.staffByRole}
+				/>
 			</div>
 		{/if}
+
+	{:else}
+		<!-- Empty State -->
+		<div class="empty-state">
+			<div class="empty-icon">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+				</svg>
+			</div>
+			<h3 class="empty-title">เลือกขอบเขตเพื่อดูข้อมูล</h3>
+			<p class="empty-description">
+				กรุณาเลือกจังหวัดและหน่วยงานด้านบนเพื่อดูข้อมูลเชิงลึก
+			</p>
+			<div class="empty-hint">
+				<div class="hint-step">
+					<div class="hint-number">1</div>
+					<span>เลือกจังหวัด</span>
+				</div>
+				<div class="hint-arrow">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+					</svg>
+				</div>
+				<div class="hint-step">
+					<div class="hint-number">2</div>
+					<span>เลือกหน่วยงาน</span>
+				</div>
+				<div class="hint-arrow">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+					</svg>
+				</div>
+				<div class="hint-step">
+					<div class="hint-number">3</div>
+					<span>ดูข้อมูลวิเคราะห์</span>
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
 	.dashboard-container {
-		animation: fade-in 0.6s ease-out-expo;
+		animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
-	/* Page Header */
+	/* ── Page Header ── */
 	.page-header {
 		position: relative;
 		overflow: hidden;
@@ -236,20 +495,20 @@
 		margin: 0 0 8px 0;
 		font-size: clamp(1.5rem, 1.2rem + 0.8vw, 2rem);
 		font-weight: 700;
-		color: oklch(1 0 0);
+		color: oklch(0.98 0.005 180);
 		letter-spacing: -0.02em;
 	}
 
 	.header-subtitle {
 		margin: 0;
 		font-size: clamp(0.875rem, 0.75rem + 0.4vw, 1rem);
-		color: oklch(1 0 0 / 0.85);
+		color: oklch(0.98 0.005 180 / 0.85);
 		line-height: 1.6;
 	}
 
 	.user-name {
 		font-weight: 600;
-		color: oklch(1 0 0);
+		color: oklch(0.98 0.005 180);
 	}
 
 	.admin-badge {
@@ -259,11 +518,15 @@
 		margin-left: 8px;
 		padding: 4px 12px;
 		border-radius: 999px;
-		background: oklch(1 0 0 / 0.2);
+		background: oklch(0.98 0.005 180 / 0.2);
 		backdrop-filter: blur(8px);
 		font-size: 0.75rem;
 		font-weight: 500;
-		color: oklch(1 0 0);
+		color: oklch(0.98 0.005 180);
+	}
+
+	.admin-badge.director {
+		background: oklch(0.54 0.16 150 / 0.3);
 	}
 
 	.badge-icon {
@@ -278,98 +541,429 @@
 		width: 200px;
 		height: 200px;
 		border-radius: 50%;
-		background: oklch(1 0 0 / 0.08);
+		background: oklch(0.98 0.005 180 / 0.08);
 		pointer-events: none;
 	}
 
-	/* KPI Grid */
-	.kpi-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-		gap: 20px;
-		margin-bottom: 32px;
+	/* ── Agency Banner ── */
+	.agency-banner {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		padding: 16px 20px;
+		margin-bottom: 28px;
+		border-radius: 12px;
+		background: oklch(0.52 0.14 240 / 0.06);
+		border-left: 3px solid oklch(0.52 0.14 240);
+		animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
-	/* Budget Summary Card */
-	.budget-summary-card {
-		background: oklch(1 0 0);
+	.agency-banner-icon {
+		width: 36px;
+		height: 36px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		color: oklch(0.52 0.14 240);
+	}
+
+	.agency-banner-icon svg {
+		width: 24px;
+		height: 24px;
+	}
+
+	.agency-banner-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.agency-banner-name {
+		font-size: clamp(0.9375rem, 0.8rem + 0.35vw, 1.0625rem);
+		font-weight: 600;
+		color: oklch(0.25 0.02 180);
+	}
+
+	.agency-banner-fy {
+		font-size: 0.8125rem;
+		color: oklch(0.5 0.02 180);
+	}
+
+	/* ── Section Headers ── */
+	.section-header {
+		margin-top: 44px;
+		margin-bottom: 20px;
+		padding-bottom: 12px;
+		border-bottom: 1px solid oklch(0.92 0.005 180);
+	}
+
+	.section-title {
+		margin: 0;
+		font-size: clamp(1.0625rem, 0.9rem + 0.4vw, 1.1875rem);
+		font-weight: 600;
+		color: oklch(0.25 0.02 180);
+		letter-spacing: -0.01em;
+	}
+
+	/* ── KPI Row ── */
+	.kpi-row {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 20px;
+		margin-bottom: 8px;
+	}
+
+	/* ── Grid Layouts ── */
+	.grid-2col {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 24px;
+		margin-bottom: 8px;
+	}
+
+	.grid-2col-asymmetric {
+		display: grid;
+		grid-template-columns: 1.3fr 1fr;
+		gap: 24px;
+		margin-bottom: 8px;
+	}
+
+	.grid-3col {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 24px;
+		margin-bottom: 8px;
+	}
+
+	.grid-full {
+		margin-bottom: 8px;
+	}
+
+	.full-width-card {
+		margin-bottom: 8px;
+	}
+
+	.stack-2 {
+		display: flex;
+		flex-direction: column;
+		gap: 24px;
+	}
+
+	/* ── Budget Section ── */
+	.budget-section {
+		margin-bottom: 8px;
+		animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.budget-overview {
+		display: grid;
+		grid-template-columns: 1.4fr 1fr;
+		gap: 28px;
+		background: oklch(0.98 0.005 180);
+		border: 1px solid oklch(0.88 0.01 180);
+		border-radius: 16px;
+		padding: 28px;
+	}
+
+	.label-sm {
+		margin: 0 0 8px 0;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: oklch(0.5 0.02 180);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.budget-big-number {
+		font-size: clamp(1.5rem, 1.2rem + 0.8vw, 2rem);
+		font-weight: 700;
+		color: oklch(0.25 0.02 180);
+		margin-bottom: 16px;
+		line-height: 1;
+	}
+
+	.budget-bar-container {
+		height: 10px;
+		background: oklch(0.92 0.005 180);
+		border-radius: 5px;
+		overflow: hidden;
+		margin-bottom: 8px;
+	}
+
+	.budget-bar-fill {
+		height: 100%;
+		border-radius: 5px;
+		background: linear-gradient(90deg, oklch(0.52 0.14 240), oklch(0.54 0.16 150));
+		animation: grow-right 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+	}
+
+	.budget-bar-legend {
+		display: flex;
+		justify-content: space-between;
+		font-size: 0.8125rem;
+		color: oklch(0.5 0.02 180);
+	}
+
+	.budget-breakdown {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	.budget-type-card {
+		display: flex;
+		gap: 14px;
+		padding: 16px;
+		border-radius: 12px;
+		background: oklch(0.99 0.003 180);
+		border: 1px solid oklch(0.9 0.005 180);
+	}
+
+	.type-indicator {
+		width: 4px;
+		border-radius: 2px;
+		flex-shrink: 0;
+	}
+
+	.income-indicator { background: oklch(0.54 0.16 150); }
+	.expense-indicator { background: oklch(0.52 0.14 240); }
+
+	.type-info { flex: 1; }
+
+	.type-label {
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: oklch(0.5 0.02 180);
+		margin-bottom: 4px;
+	}
+
+	.type-estimated {
+		font-size: clamp(1rem, 0.85rem + 0.4vw, 1.25rem);
+		font-weight: 700;
+		color: oklch(0.25 0.02 180);
+		margin-bottom: 10px;
+	}
+
+	.type-progress-track {
+		height: 6px;
+		background: oklch(0.92 0.005 180);
+		border-radius: 3px;
+		overflow: hidden;
+		margin-bottom: 6px;
+	}
+
+	.type-progress-fill {
+		height: 100%;
+		border-radius: 3px;
+		animation: grow-right 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+	}
+
+	.income-fill { background: oklch(0.54 0.16 150); }
+	.expense-fill { background: oklch(0.52 0.14 240); }
+
+	.type-actual {
+		font-size: 0.8125rem;
+		color: oklch(0.5 0.02 180);
+	}
+
+	.type-pct {
+		font-weight: 600;
+		color: oklch(0.4 0.02 180);
+	}
+
+	/* ── Gauge Card ── */
+	.gauge-card {
+		background: oklch(0.995 0.002 180);
 		border: 1px solid oklch(0.9 0.005 180);
 		border-radius: 16px;
 		padding: 24px;
-		margin-bottom: 32px;
-		animation: slide-up 0.5s ease-out-expo;
+		text-align: center;
 	}
 
-	.card-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 20px;
-	}
-
-	.card-title {
-		margin: 0;
+	.gauge-title {
+		margin: 0 0 16px 0;
 		font-size: clamp(1rem, 0.85rem + 0.4vw, 1.125rem);
 		font-weight: 600;
 		color: oklch(0.25 0.02 180);
 	}
 
-	.card-badge {
-		padding: 4px 12px;
-		border-radius: 8px;
-		background: oklch(0.52 0.14 240 / 0.1);
-		font-size: 0.75rem;
-		font-weight: 600;
-		color: oklch(0.52 0.14 240);
+	.gauge-container {
+		position: relative;
+		width: 160px;
+		height: 90px;
+		margin: 0 auto 12px;
 	}
 
-	.budget-metrics {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-		gap: 20px;
+	.gauge-svg {
+		width: 100%;
+		height: 100%;
 	}
 
-	.budget-metric {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
+	.gauge-fill {
+		animation: gauge-animate 1s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 	}
 
-	.metric-label {
+	.gauge-value {
+		position: absolute;
+		bottom: 0;
+		left: 50%;
+		transform: translateX(-50%);
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: oklch(0.54 0.16 150);
+	}
+
+	.gauge-meta {
 		font-size: 0.8125rem;
 		color: oklch(0.5 0.02 180);
 	}
 
-	.metric-value {
-		font-size: clamp(1.125rem, 0.95rem + 0.5vw, 1.375rem);
-		font-weight: 700;
+	/* ── Table Card ── */
+	.table-card {
+		background: oklch(0.995 0.002 180);
+		border: 1px solid oklch(0.9 0.005 180);
+		border-radius: 16px;
+		padding: 24px;
+		animation: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.table-title {
+		margin: 0 0 4px 0;
+		font-size: clamp(1rem, 0.85rem + 0.4vw, 1.125rem);
+		font-weight: 600;
 		color: oklch(0.25 0.02 180);
 	}
 
-	.metric-value.primary {
+	.table-subtitle {
+		margin: 0 0 20px 0;
+		font-size: 0.8125rem;
+		color: oklch(0.5 0.02 180);
+	}
+
+	.table-wrap {
+		overflow-x: auto;
+	}
+
+	.data-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.875rem;
+	}
+
+	.data-table th {
+		text-align: left;
+		padding: 8px 12px;
+		font-weight: 500;
+		color: oklch(0.45 0.02 180);
+		border-bottom: 1px solid oklch(0.9 0.005 180);
+		font-size: 0.8125rem;
+	}
+
+	.data-table td {
+		padding: 10px 12px;
+		color: oklch(0.3 0.02 180);
+		border-bottom: 1px solid oklch(0.95 0.003 180);
+	}
+
+	.data-table tfoot td {
+		border-bottom: none;
+		border-top: 2px solid oklch(0.88 0.01 180);
+		color: oklch(0.25 0.02 180);
+	}
+
+	.data-table .num {
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.font-semibold { font-weight: 600; }
+
+	.status-dot {
+		display: inline-block;
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		margin-right: 8px;
+		vertical-align: middle;
+	}
+
+	/* ── Bank List ── */
+	.bank-list {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	.bank-item {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		padding: 14px 16px;
+		border-radius: 12px;
+		background: oklch(0.98 0.005 180);
+		border: 1px solid oklch(0.92 0.005 180);
+		transition: transform 0.2s ease;
+	}
+
+	.bank-item:hover {
+		transform: translateY(-1px);
+	}
+
+	.bank-icon {
+		width: 40px;
+		height: 40px;
+		border-radius: 10px;
+		background: oklch(0.52 0.14 240 / 0.1);
 		color: oklch(0.52 0.14 240);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
 	}
 
-	.metric-value.success {
-		color: oklch(0.54 0.16 150);
+	.bank-icon svg {
+		width: 20px;
+		height: 20px;
 	}
 
-	.metric-value.error {
-		color: oklch(0.58 0.2 25);
+	.bank-icon.tax-pool {
+		background: oklch(0.62 0.18 60 / 0.1);
+		color: oklch(0.62 0.18 60);
 	}
 
-	/* Charts Grid */
-	.charts-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-		gap: 24px;
+	.bank-info {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
 	}
 
-	.chart-card-wide {
-		grid-column: 1 / -1;
+	.bank-name {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: oklch(0.25 0.02 180);
 	}
 
-	/* Empty State */
+	.bank-number {
+		font-size: 0.75rem;
+		color: oklch(0.55 0.02 180);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.bank-balance {
+		font-size: 0.9375rem;
+		font-weight: 700;
+		color: oklch(0.52 0.14 240);
+		white-space: nowrap;
+	}
+
+	.bank-balance.tax-pool-balance {
+		color: oklch(0.62 0.18 60);
+	}
+
+	/* ── Empty State ── */
 	.empty-state {
 		display: flex;
 		flex-direction: column;
@@ -377,7 +971,7 @@
 		justify-content: center;
 		padding: 80px 32px;
 		text-align: center;
-		animation: fade-in 0.6s ease-out-expo;
+		animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	.empty-icon {
@@ -437,7 +1031,7 @@
 		height: 24px;
 		border-radius: 50%;
 		background: oklch(0.52 0.14 240);
-		color: oklch(1 0 0);
+		color: oklch(0.98 0.005 180);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -446,18 +1040,15 @@
 	}
 
 	.hint-arrow {
-		font-size: 1.25rem;
 		color: oklch(0.6 0.02 180);
+		display: flex;
+		align-items: center;
 	}
 
-	/* Animations */
+	/* ── Animations ── */
 	@keyframes fade-in {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
+		from { opacity: 0; }
+		to { opacity: 1; }
 	}
 
 	@keyframes slide-up {
@@ -471,26 +1062,50 @@
 		}
 	}
 
-	/* Responsive */
-	@media (max-width: 768px) {
+	@keyframes grow-right {
+		from { width: 0 !important; opacity: 0; }
+		to { opacity: 1; }
+	}
+
+	@keyframes gauge-animate {
+		from { stroke-dasharray: 0 157; }
+	}
+
+	/* ── Responsive ── */
+	@media (max-width: 1024px) {
+		.kpi-row {
+			grid-template-columns: repeat(2, 1fr);
+		}
+
+		.grid-2col,
+		.grid-2col-asymmetric {
+			grid-template-columns: 1fr;
+		}
+
+		.grid-3col {
+			grid-template-columns: 1fr 1fr;
+		}
+
+		.budget-overview {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (max-width: 640px) {
 		.page-header {
 			padding: 24px;
 		}
 
-		.kpi-grid {
+		.kpi-row {
 			grid-template-columns: 1fr;
 		}
 
-		.charts-grid {
+		.grid-3col {
 			grid-template-columns: 1fr;
 		}
 
-		.chart-card-wide {
-			grid-column: 1;
-		}
-
-		.budget-metrics {
-			grid-template-columns: 1fr 1fr;
+		.budget-overview {
+			padding: 20px;
 		}
 
 		.empty-hint {

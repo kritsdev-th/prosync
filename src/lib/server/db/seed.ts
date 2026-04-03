@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
+import { eq } from 'drizzle-orm';
 import postgres from 'postgres';
 import { hash } from '@node-rs/argon2';
 import * as schema from './schema';
@@ -337,7 +338,7 @@ async function seed() {
 	const existingSuperAdmins = await db
 		.select()
 		.from(schema.users)
-		.where((u) => u.is_super_admin);
+		.where(eq(schema.users.is_super_admin, true));
 
 	if (existingSuperAdmins.length === 0) {
 		const superAdminHash = await hash('admin1234');
@@ -859,7 +860,7 @@ async function seed() {
 	const existingDocs = await db.select().from(schema.documents);
 
 	if (existingDocs.length < 30) {
-		const users = await db.select().from(schema.users).where((t) => !t.is_super_admin);
+		const users = await db.select().from(schema.users).where(eq(schema.users.is_super_admin, false));
 		const plans = await db.select().from(schema.plans);
 
 		if (workflows.length > 0 && plans.length > 0 && users.length > 0) {

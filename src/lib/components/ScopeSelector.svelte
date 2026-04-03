@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 	import type { Province, Agency, OrgUnit } from '$lib/types/dashboard';
 
 	interface Props {
@@ -10,6 +9,8 @@
 		selectedProvinceId?: number | null;
 		selectedAgencyId?: number | null;
 		selectedOrgUnitId?: number | null;
+		isSuperAdmin?: boolean;
+		isDirector?: boolean;
 	}
 
 	let {
@@ -18,7 +19,9 @@
 		orgUnits,
 		selectedProvinceId = null,
 		selectedAgencyId = null,
-		selectedOrgUnitId = null
+		selectedOrgUnitId = null,
+		isSuperAdmin = false,
+		isDirector = false
 	}: Props = $props();
 
 	let provinceId = $state(selectedProvinceId);
@@ -42,7 +45,7 @@
 		if (provinceId) params.set('province_id', String(provinceId));
 		if (agencyId) params.set('agency_id', String(agencyId));
 		if (orgUnitId) params.set('org_unit_id', String(orgUnitId));
-		
+
 		const queryString = params.toString();
 		goto(`/dashboard${queryString ? `?${queryString}` : ''}`, { replaceState: true });
 	}
@@ -67,63 +70,72 @@
 		orgUnitId = target.value ? parseInt(target.value) : null;
 		updateUrl();
 	}
+
+	// Director doesn't need scope selector — auto-selected by server
+	let showSelector = $derived(!isDirector);
+	// Super admin only needs province + agency (no sub-org unit)
+	let showOrgUnit = $derived(!isSuperAdmin && !isDirector);
 </script>
 
-<div class="scope-selector">
-	<div class="scope-header">
-		<h2 class="scope-title">เลือกขอบเขตข้อมูล</h2>
-		<p class="scope-subtitle">เลือกจังหวัดและหน่วยงานเพื่อดูข้อมูลเชิงลึก</p>
+{#if showSelector}
+	<div class="scope-selector">
+		<div class="scope-header">
+			<h2 class="scope-title">เลือกขอบเขตข้อมูล</h2>
+			<p class="scope-subtitle">เลือกจังหวัดและหน่วยงานเพื่อดูข้อมูลเชิงลึก</p>
+		</div>
+
+		<div class="scope-fields" class:two-cols={!showOrgUnit}>
+			<div class="field-group">
+				<label for="province" class="field-label">จังหวัด</label>
+				<select
+					id="province"
+					class="field-select"
+					value={provinceId ?? ''}
+					onchange={handleProvinceChange}
+				>
+					<option value="">-- เลือกจังหวัด --</option>
+					{#each provinces as province}
+						<option value={province.id}>{province.name}</option>
+					{/each}
+				</select>
+			</div>
+
+			<div class="field-group">
+				<label for="agency" class="field-label">หน่วยงาน</label>
+				<select
+					id="agency"
+					class="field-select"
+					value={agencyId ?? ''}
+					onchange={handleAgencyChange}
+					disabled={!provinceId}
+				>
+					<option value="">-- เลือกหน่วยงาน --</option>
+					{#each filteredAgencies as agency}
+						<option value={agency.id}>{agency.name}</option>
+					{/each}
+				</select>
+			</div>
+
+			{#if showOrgUnit}
+				<div class="field-group">
+					<label for="orgUnit" class="field-label">หน่วยงานย่อย</label>
+					<select
+						id="orgUnit"
+						class="field-select"
+						value={orgUnitId ?? ''}
+						onchange={handleOrgUnitChange}
+						disabled={!agencyId}
+					>
+						<option value="">-- เลือกหน่วยงานย่อย --</option>
+						{#each filteredOrgUnits as orgUnit}
+							<option value={orgUnit.id}>{orgUnit.name}</option>
+						{/each}
+					</select>
+				</div>
+			{/if}
+		</div>
 	</div>
-
-	<div class="scope-fields">
-		<div class="field-group">
-			<label for="province" class="field-label">จังหวัด</label>
-			<select
-				id="province"
-				class="field-select"
-				value={provinceId ?? ''}
-				onchange={handleProvinceChange}
-			>
-				<option value="">-- เลือกจังหวัด --</option>
-				{#each provinces as province}
-					<option value={province.id}>{province.name}</option>
-				{/each}
-			</select>
-		</div>
-
-		<div class="field-group">
-			<label for="agency" class="field-label">หน่วยงาน</label>
-			<select
-				id="agency"
-				class="field-select"
-				value={agencyId ?? ''}
-				onchange={handleAgencyChange}
-				disabled={!provinceId}
-			>
-				<option value="">-- เลือกหน่วยงาน --</option>
-				{#each filteredAgencies as agency}
-					<option value={agency.id}>{agency.name}</option>
-				{/each}
-			</select>
-		</div>
-
-		<div class="field-group">
-			<label for="orgUnit" class="field-label">หน่วยงานย่อย</label>
-			<select
-				id="orgUnit"
-				class="field-select"
-				value={orgUnitId ?? ''}
-				onchange={handleOrgUnitChange}
-				disabled={!agencyId}
-			>
-				<option value="">-- เลือกหน่วยงานย่อย --</option>
-				{#each filteredOrgUnits as orgUnit}
-					<option value={orgUnit.id}>{orgUnit.name}</option>
-				{/each}
-			</select>
-		</div>
-	</div>
-</div>
+{/if}
 
 <style>
 	.scope-selector {
@@ -132,7 +144,7 @@
 		border-radius: 16px;
 		padding: 24px;
 		margin-bottom: 32px;
-		animation: slide-up 0.5s ease-out-expo;
+		animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	.scope-header {
@@ -156,6 +168,10 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 		gap: 16px;
+	}
+
+	.scope-fields.two-cols {
+		grid-template-columns: 1fr 1fr;
 	}
 
 	.field-group {
@@ -206,6 +222,12 @@
 		to {
 			opacity: 1;
 			transform: translateY(0);
+		}
+	}
+
+	@media (max-width: 640px) {
+		.scope-fields.two-cols {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>
