@@ -8,9 +8,9 @@ import type { RolePermissions } from '$lib/server/validation/types';
 
 const DEFAULT_PERMISSIONS: RolePermissions = {
 	system: { can_manage_users: false, can_manage_org_units: false },
-	planning: { can_create_plan: false, can_edit_plan: false, can_delete_plan: false },
-	procurement: { can_create_document: false, can_approve_document: false },
-	finance: { can_create_dika: false, can_approve_dika: false },
+	planning: { can_view_plan: false, can_create_plan: false, can_edit_plan: false, can_delete_plan: false },
+	procurement: { can_view_document: false, can_create_document: false, can_approve_document: false },
+	finance: { can_view_dika: false, can_create_dika: false, can_approve_dika: false },
 	audit: { can_view_audit_trail: false }
 };
 

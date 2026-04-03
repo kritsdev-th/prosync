@@ -5,23 +5,41 @@ import { medianPrices, provinces } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { createMedianPriceSchema, updateMedianPriceSchema, parseFormData } from '$lib/server/validation/schemas';
 
-export const load: PageServerLoad = async () => {
-	const prices = await db
-		.select({
-			id: medianPrices.id,
-			category: medianPrices.category,
-			item_name: medianPrices.item_name,
-			price: medianPrices.price,
-			province_id: medianPrices.province_id,
-			province_name: provinces.name,
-			effective_date: medianPrices.effective_date
-		})
-		.from(medianPrices)
-		.innerJoin(provinces, eq(medianPrices.province_id, provinces.id));
+export const load: PageServerLoad = async ({ url }) => {
+	const provinceIdParam = url.searchParams.get('province_id');
+	const selectedProvinceId = provinceIdParam ? Number(provinceIdParam) : null;
 
-	const provinceList = await db.select().from(provinces);
+	const provinceList = await db.select().from(provinces).orderBy(provinces.name);
 
-	return { prices, provinces: provinceList };
+	// Only load prices when a province is selected
+	let prices: any[] = [];
+	let selectedProvinceName: string | null = null;
+
+	if (selectedProvinceId) {
+		const found = provinceList.find((p) => p.id === selectedProvinceId);
+		selectedProvinceName = found?.name ?? null;
+
+		prices = await db
+			.select({
+				id: medianPrices.id,
+				category: medianPrices.category,
+				item_name: medianPrices.item_name,
+				price: medianPrices.price,
+				province_id: medianPrices.province_id,
+				province_name: provinces.name,
+				effective_date: medianPrices.effective_date
+			})
+			.from(medianPrices)
+			.innerJoin(provinces, eq(medianPrices.province_id, provinces.id))
+			.where(eq(medianPrices.province_id, selectedProvinceId));
+	}
+
+	return {
+		prices,
+		provinces: provinceList,
+		selectedProvinceId,
+		selectedProvinceName
+	};
 };
 
 export const actions: Actions = {

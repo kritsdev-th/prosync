@@ -5,15 +5,18 @@ export interface RolePermissions {
 		can_manage_org_units: boolean;
 	};
 	planning: {
+		can_view_plan: boolean;
 		can_create_plan: boolean;
 		can_edit_plan: boolean;
 		can_delete_plan: boolean;
 	};
 	procurement: {
+		can_view_document: boolean;
 		can_create_document: boolean;
 		can_approve_document: boolean;
 	};
 	finance: {
+		can_view_dika: boolean;
 		can_create_dika: boolean;
 		can_approve_dika: boolean;
 	};
@@ -56,11 +59,11 @@ export function mergePermissions(assignments: UserAssignmentRow[]): {
 		if (a.is_primary_unit) primaryOrgUnitId = a.org_unit_id;
 		const p = a.permissions as RolePermissions;
 		if (p.system?.can_manage_users) merged.can_manage_users = true;
-		if (p.planning?.can_create_plan || p.planning?.can_edit_plan)
+		if (p.planning?.can_view_plan || p.planning?.can_create_plan || p.planning?.can_edit_plan)
 			merged.can_manage_plans = true;
-		if (p.procurement?.can_create_document || p.procurement?.can_approve_document)
+		if (p.procurement?.can_view_document || p.procurement?.can_create_document || p.procurement?.can_approve_document)
 			merged.can_manage_procurement = true;
-		if (p.finance?.can_create_dika || p.finance?.can_approve_dika)
+		if (p.finance?.can_view_dika || p.finance?.can_create_dika || p.finance?.can_approve_dika)
 			merged.can_manage_finance = true;
 		if (p.audit?.can_view_audit_trail) merged.can_view_audit_trail = true;
 	}
