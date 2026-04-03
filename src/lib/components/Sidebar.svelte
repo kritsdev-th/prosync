@@ -20,7 +20,15 @@
 	);
 
 	function isActive(item: typeof navItems[number], pathname: string): boolean {
-		if (pathname.startsWith(item.href)) return true;
+		// Check if another item claims this path via matchAlso
+		if (pathname.startsWith(item.href)) {
+			// If this is /admin, don't match paths claimed by org-management
+			const claimedByOther = navItems.some(
+				(other) => other.href !== item.href && other.matchAlso.some((p) => pathname.startsWith(p))
+			);
+			if (claimedByOther) return false;
+			return true;
+		}
 		return item.matchAlso.some((p) => pathname.startsWith(p));
 	}
 </script>

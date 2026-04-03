@@ -1,4 +1,7 @@
 import type { PageServerLoad } from './$types';
+import { db } from '$lib/server/db';
+import { provinces, agencies } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 import { getMongoDb } from '$lib/server/db/mongodb';
 import { type AuditRecord, type AuditCollection, VALID_AUDIT_COLLECTIONS } from '$lib/server/validation/types';
 
@@ -9,25 +12,56 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 		? (collectionParam as AuditCollection)
 		: 'plan_budget_histories';
 
-	const agencyId = user.is_super_admin
-		? Number(url.searchParams.get('agency_id')) || null
-		: user.agency_id;
+	// Scope: super admin must select province+agency, others see own agency
+	let provincesList: { id: number; name: string }[] = [];
+	let agenciesList: { id: number; name: string; province_id: number }[] = [];
+	let selectedProvinceId: number | null = null;
+	let selectedAgencyId: number | null = null;
 
+	if (user.is_super_admin) {
+		provincesList = await db.select({ id: provinces.id, name: provinces.name }).from(provinces).orderBy(provinces.name);
+
+		const pidParam = url.searchParams.get('province_id');
+		if (pidParam) {
+			selectedProvinceId = Number(pidParam);
+			agenciesList = await db
+				.select({ id: agencies.id, name: agencies.name, province_id: agencies.province_id })
+				.from(agencies)
+				.where(eq(agencies.province_id, selectedProvinceId));
+		}
+
+		const aidParam = url.searchParams.get('agency_id');
+		if (aidParam) selectedAgencyId = Number(aidParam);
+	} else {
+		selectedAgencyId = user.agency_id;
+	}
+
+	const actionType = url.searchParams.get('action_type') || null;
 	let records: AuditRecord[] = [];
 
-	if (agencyId) {
+	if (selectedAgencyId) {
 		try {
 			const mongoDB = await getMongoDb();
-			const filter: Record<string, unknown> = { agency_id: agencyId };
+			const filter: Record<string, unknown> = {};
 
-			const actionType = url.searchParams.get('action_type');
+			if (user.is_super_admin) {
+				// Super admin sees: records for selected agency + own edits
+				filter.$or = [
+					{ agency_id: selectedAgencyId },
+					{ 'action_by.user_id': user.sub }
+				];
+			} else {
+				// Regular user / director: only own agency records
+				filter.agency_id = selectedAgencyId;
+			}
+
 			if (actionType) filter.action_type = actionType;
 
 			const rawRecords = await mongoDB
 				.collection(collection)
 				.find(filter)
 				.sort({ created_at: -1 })
-				.limit(100)
+				.limit(200)
 				.toArray();
 
 			records = rawRecords.map((r) => ({
@@ -44,6 +78,10 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 		user,
 		records,
 		collection,
-		selectedAgencyId: agencyId
+		provinces: provincesList,
+		agencies: agenciesList,
+		selectedProvinceId,
+		selectedAgencyId,
+		actionType
 	};
 };
