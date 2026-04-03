@@ -23,7 +23,8 @@
       "Bash(process.exit)",
       "Bash(main)",
       "Bash(eof)",
-      "Bash(rm *)"
+      "Bash(rm *)",
+      "Bash(del *)"
     ]
   },
   "$version": 3

@@ -11,7 +11,6 @@
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/lib/server/db/seed.ts",
-    "db:seed:dashboard": "tsx src/lib/server/db/seed-dashboard.ts",
     "db:triggers": "docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/custom/0001_triggers.sql",
     "db:add-plan-fields": "docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/custom/0002_add_plan_fields.sql",
     "db:custom": "docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/custom/0001_triggers.sql && docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/custom/0002_add_plan_fields.sql && docker exec -i prosync-postgres-1 psql -U prosync -d erp_db < drizzle/custom/0003_add_profile_completed.sql",
