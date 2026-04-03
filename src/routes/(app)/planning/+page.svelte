@@ -364,21 +364,21 @@
 		<!-- Row 2: Summary strip -->
 		{#if activeFy}
 			<div class="mt-2 grid grid-cols-4 gap-2">
-				<div class="rounded-md px-3 py-2" style="background: var(--color-health-50)">
-					<p class="text-[0.625rem] font-medium uppercase tracking-wider" style="color: var(--color-health-600)">คาดการณ์รายรับ</p>
-					<p class="mt-0.5 text-sm font-bold tabular-nums" style="color: var(--color-health-800)">{formatBaht(String(activeFy.total_estimated_income))}</p>
+				<div class="rounded-md px-3 py-2" style="background: var(--color-info-50)">
+					<p class="text-[0.625rem] font-medium uppercase tracking-wider" style="color: var(--color-info-600)">คาดการณ์รายรับ</p>
+					<p class="mt-0.5 text-sm font-bold tabular-nums" style="color: var(--color-info-800)">{formatBaht(String(activeFy.total_estimated_income))}</p>
 				</div>
-				<div class="rounded-md px-3 py-2" style="background: var(--color-brand-50)">
-					<p class="text-[0.625rem] font-medium uppercase tracking-wider" style="color: var(--color-brand-600)">คาดการณ์รายจ่าย</p>
-					<p class="mt-0.5 text-sm font-bold tabular-nums" style="color: var(--color-brand-800)">{formatBaht(String(activeFy.total_estimated_expense))}</p>
+				<div class="rounded-md px-3 py-2" style="background: var(--color-orange-50)">
+					<p class="text-[0.625rem] font-medium uppercase tracking-wider" style="color: var(--color-orange-600)">คาดการณ์รายจ่าย</p>
+					<p class="mt-0.5 text-sm font-bold tabular-nums" style="color: var(--color-orange-800)">{formatBaht(String(activeFy.total_estimated_expense))}</p>
 				</div>
-				<div class="rounded-md px-3 py-2" style="background: var(--color-slate-50)">
-					<p class="text-[0.625rem] font-medium uppercase tracking-wider" style="color: var(--color-slate-400)">รายรับจริง</p>
-					<p class="mt-0.5 text-sm font-semibold tabular-nums" style="color: var(--color-slate-700)">{formatBaht(String(activeFy.total_actual_income))}</p>
+				<div class="rounded-md px-3 py-2" style="background: var(--color-success-50)">
+					<p class="text-[0.625rem] font-medium uppercase tracking-wider" style="color: var(--color-success-600)">รายรับจริง</p>
+					<p class="mt-0.5 text-sm font-semibold tabular-nums" style="color: var(--color-success-800)">{formatBaht(String(activeFy.total_actual_income))}</p>
 				</div>
-				<div class="rounded-md px-3 py-2" style="background: var(--color-slate-50)">
-					<p class="text-[0.625rem] font-medium uppercase tracking-wider" style="color: var(--color-slate-400)">รายจ่ายจริง</p>
-					<p class="mt-0.5 text-sm font-semibold tabular-nums" style="color: var(--color-slate-700)">{formatBaht(String(activeFy.total_actual_expense))}</p>
+				<div class="rounded-md px-3 py-2" style="background: var(--color-error-50)">
+					<p class="text-[0.625rem] font-medium uppercase tracking-wider" style="color: var(--color-error-600)">รายจ่ายจริง</p>
+					<p class="mt-0.5 text-sm font-semibold tabular-nums" style="color: var(--color-error-800)">{formatBaht(String(activeFy.total_actual_expense))}</p>
 				</div>
 			</div>
 		{/if}

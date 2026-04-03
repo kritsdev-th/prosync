@@ -44,14 +44,54 @@
 	--color-slate-900: oklch(0.24 0.050 180);
 
 	/* Semantic colors */
+	--color-success-50: oklch(0.97 0.02 150);
+	--color-success-100: oklch(0.93 0.04 150);
+	--color-success-200: oklch(0.88 0.06 150);
+	--color-success-300: oklch(0.80 0.08 150);
+	--color-success-400: oklch(0.70 0.10 150);
+	--color-success-500: oklch(0.62 0.14 150);
+	--color-success-600: oklch(0.54 0.16 150);
+	--color-success-700: oklch(0.46 0.14 150);
+	--color-success-800: oklch(0.38 0.12 150);
+	--color-success-900: oklch(0.32 0.10 150);
 	--color-success: oklch(0.62 0.14 150);
 	--color-success-muted: oklch(0.93 0.04 150);
 	--color-warning: oklch(0.75 0.12 85);
 	--color-warning-muted: oklch(0.95 0.04 85);
+	--color-error-50: oklch(0.97 0.02 25);
+	--color-error-100: oklch(0.93 0.04 25);
+	--color-error-200: oklch(0.88 0.06 25);
+	--color-error-300: oklch(0.80 0.08 25);
+	--color-error-400: oklch(0.70 0.10 25);
+	--color-error-500: oklch(0.62 0.16 25);
+	--color-error-600: oklch(0.54 0.18 25);
+	--color-error-700: oklch(0.46 0.16 25);
+	--color-error-800: oklch(0.38 0.14 25);
+	--color-error-900: oklch(0.32 0.12 25);
 	--color-error: oklch(0.58 0.18 25);
 	--color-error-muted: oklch(0.93 0.04 25);
+	--color-info-50: oklch(0.97 0.02 240);
+	--color-info-100: oklch(0.93 0.04 240);
+	--color-info-200: oklch(0.88 0.06 240);
+	--color-info-300: oklch(0.80 0.08 240);
+	--color-info-400: oklch(0.70 0.10 240);
+	--color-info-500: oklch(0.62 0.14 240);
+	--color-info-600: oklch(0.54 0.16 240);
+	--color-info-700: oklch(0.46 0.14 240);
+	--color-info-800: oklch(0.38 0.12 240);
+	--color-info-900: oklch(0.32 0.10 240);
 	--color-info: oklch(0.60 0.12 240);
 	--color-info-muted: oklch(0.93 0.04 240);
+	--color-orange-50: oklch(0.97 0.02 55);
+	--color-orange-100: oklch(0.93 0.04 55);
+	--color-orange-200: oklch(0.88 0.06 55);
+	--color-orange-300: oklch(0.80 0.08 55);
+	--color-orange-400: oklch(0.70 0.10 55);
+	--color-orange-500: oklch(0.62 0.14 55);
+	--color-orange-600: oklch(0.54 0.16 55);
+	--color-orange-700: oklch(0.46 0.14 55);
+	--color-orange-800: oklch(0.38 0.12 55);
+	--color-orange-900: oklch(0.32 0.10 55);
 
 	/* Shadows with color tinting */
 	--shadow-sm: 0 1px 2px 0 oklch(0.58 0.03 240 / 0.08);
