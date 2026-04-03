@@ -3,7 +3,27 @@
     "allow": [
       "Bash(npm run *)",
       "Bash(select-object *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(npx *)",
+      "Bash(cat)",
+      "Bash(import *)",
+      "Bash(async *)",
+      "Bash(const *)",
+      "Bash(process.env.database_url)",
+      "Bash(client, *)",
+      "Bash(])",
+      "Bash(console.log)",
+      "Bash(.length, *)",
+      "Bash(p *)",
+      "Bash(.length *)",
+      "Bash(documents.foreach)",
+      "Bash(0 *)",
+      "Bash(})",
+      "Bash(dikavouchers.foreach)",
+      "Bash(process.exit)",
+      "Bash(main)",
+      "Bash(eof)",
+      "Bash(rm *)"
     ]
   },
   "$version": 3

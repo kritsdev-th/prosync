@@ -164,11 +164,26 @@
 		if (est <= 0) return 0;
 		return Math.min(100, Math.round((act / est) * 100));
 	}
+
+	function budgetRawPercent(estimated: string, actual: string): number {
+		const est = Number(estimated);
+		const act = Number(actual);
+		if (est <= 0) return 0;
+		return Math.round((act / est) * 100);
+	}
+
+	function budgetBarColor(planType: string, rawPercent: number): string {
+		if (planType === 'INCOME') return 'var(--color-health-500)';
+		// Expense: red if over 100%, blue otherwise
+		return rawPercent > 100 ? 'var(--color-error)' : 'var(--color-brand-500)';
+	}
 </script>
 
 <!-- Tree Node -->
 {#snippet planNode(node: any, depth: number, isLast: boolean)}
 	{@const progress = budgetProgress(node.estimated_amount, node.actual_amount)}
+	{@const rawPercent = budgetRawPercent(node.estimated_amount, node.actual_amount)}
+	{@const barColor = budgetBarColor(node.plan_type, rawPercent)}
 	{@const hasChildren = node.children?.length > 0}
 	<div class="relative" style="margin-left: {depth > 0 ? '2rem' : '0'}">
 		{#if depth > 0}
@@ -233,7 +248,7 @@
 								</div>
 								<div class="mt-0.5 h-1 w-full overflow-hidden rounded-full" style="background: var(--color-slate-200)">
 									<div class="h-full rounded-full transition-all duration-500"
-										style="width: {progress}%; background: {progress >= 90 ? 'var(--color-error)' : progress >= 60 ? 'var(--color-warning)' : 'var(--color-brand-500)'}; transition-timing-function: var(--ease-out-expo)"></div>
+										style="width: {progress}%; background: {barColor}; transition-timing-function: var(--ease-out-expo)"></div>
 								</div>
 							</div>
 							{#if Number(node.estimated_amount) > 0}
@@ -885,12 +900,14 @@
 							</div>
 						</div>
 						{#if Number(viewingPlan.estimated_amount) > 0}
+							{@const vRawPercent = budgetRawPercent(viewingPlan.estimated_amount, viewingPlan.actual_amount)}
+							{@const vBarColor = budgetBarColor(viewingPlan.plan_type, vRawPercent)}
 							<div class="mt-3 h-1.5 w-full overflow-hidden rounded-full" style="background: var(--color-slate-100)">
-								<div class="h-full rounded-full" style="width: {vProgress}%; background: {vProgress >= 90 ? 'var(--color-error)' : vProgress >= 60 ? 'var(--color-warning)' : 'var(--color-brand-500)'}; transition: width 0.5s var(--ease-out-expo)"></div>
+								<div class="h-full rounded-full" style="width: {vProgress}%; background: {vBarColor}; transition: width 0.5s var(--ease-out-expo)"></div>
 							</div>
 							<p class="mt-1 text-right text-[0.6875rem] font-medium"
-								style="color: {vProgress >= 90 ? 'var(--color-error)' : vProgress >= 60 ? 'var(--color-warning)' : 'var(--color-brand-500)'}">
-								ใช้ไป {vProgress}%
+								style="color: {vBarColor}">
+								ใช้ไป {vProgress}%{#if vRawPercent > 100} <span style="color: var(--color-error)">(เกินงบ {vRawPercent}%)</span>{/if}
 							</p>
 						{/if}
 					</div>

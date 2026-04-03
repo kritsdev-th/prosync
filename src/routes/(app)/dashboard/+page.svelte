@@ -10,7 +10,7 @@
 	const filters = data.filters as { provinceId: number | null; agencyId: number | null; orgUnitId: number | null };
 
 	// Check if scope is selected
-	let hasScopeSelected = $derived(filters.provinceId !== null || filters.agencyId !== null);
+	let hasScopeSelected = $derived(filters.provinceId !== null && filters.agencyId !== null);
 </script>
 
 <div class="dashboard-container">

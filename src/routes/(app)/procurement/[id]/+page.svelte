@@ -5,11 +5,33 @@
 
 	let { data, form: formResult } = $props();
 
-	function getStepStatus(step: any) {
-		if (!data.currentStep) return 'pending';
+	function getStepStatus(step: any): 'completed' | 'current' | 'rejected' | 'upcoming' | 'disabled' {
+		const isRejected = data.document.status === 'REJECTED';
+
+		if (isRejected) {
+			// Find which step was rejected via approvals
+			const rejectedApproval = data.approvals.find((a: any) => a.action === 'REJECTED');
+			const rejectedStepId = rejectedApproval?.step_id;
+
+			if (rejectedStepId) {
+				const rejectedStep = data.steps.find((s: any) => s.id === rejectedStepId);
+				if (rejectedStep) {
+					if (step.step_sequence < rejectedStep.step_sequence) return 'completed';
+					if (step.id === rejectedStepId) return 'rejected';
+					return 'disabled'; // steps after rejected = gray
+				}
+			}
+			// Fallback: current step is the rejected one
+			if (!data.currentStep) return 'disabled';
+			if (step.step_sequence < data.currentStep.step_sequence) return 'completed';
+			if (step.id === data.currentStep.id) return 'rejected';
+			return 'disabled';
+		}
+
+		if (!data.currentStep) return 'upcoming';
 		if (step.step_sequence < data.currentStep.step_sequence) return 'completed';
 		if (step.id === data.currentStep.id) return 'current';
-		return 'pending';
+		return 'upcoming'; // not yet reached = blue
 	}
 
 	function getPayloadForStep(stepSequence: number) {
@@ -38,16 +60,31 @@
 	{/if}
 
 	<!-- Step Progress -->
-	<div class="mb-6 overflow-x-auto rounded-xl border bg-white p-4">
-		<div class="flex gap-2">
-			{#each data.steps as step}
+	<div class="step-progress-container">
+		<div class="step-progress-track">
+			{#each data.steps as step, i}
 				{@const status = getStepStatus(step)}
-				<div class="flex min-w-[140px] flex-col items-center text-center">
-					<div class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold
-						{status === 'completed' ? 'bg-green-500 text-white' : status === 'current' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}">
-						{step.step_sequence}
+				{@const isLast = i === data.steps.length - 1}
+				<div class="step-item">
+					<div class="step-indicator-row">
+						<div class="step-circle step-circle--{status}">
+							{#if status === 'completed'}
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+								</svg>
+							{:else if status === 'rejected'}
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+								</svg>
+							{:else}
+								{step.step_sequence}
+							{/if}
+						</div>
+						{#if !isLast}
+							<div class="step-connector step-connector--{status}"></div>
+						{/if}
 					</div>
-					<p class="mt-1 text-xs {status === 'current' ? 'font-medium text-blue-700' : 'text-gray-500'}">
+					<p class="step-label step-label--{status}">
 						{step.step_name}
 					</p>
 				</div>
@@ -326,3 +363,145 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	/* Step Progress */
+	.step-progress-container {
+		margin-bottom: 24px;
+		overflow-x: auto;
+		border-radius: 16px;
+		border: 1px solid oklch(0.9 0.005 180);
+		background: oklch(1 0 0);
+		padding: 24px;
+	}
+
+	.step-progress-track {
+		display: flex;
+		gap: 0;
+		min-width: max-content;
+	}
+
+	.step-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		min-width: 140px;
+		flex: 1;
+	}
+
+	.step-indicator-row {
+		display: flex;
+		align-items: center;
+		width: 100%;
+	}
+
+	.step-circle {
+		flex-shrink: 0;
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 0.8125rem;
+		font-weight: 700;
+		transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s;
+	}
+
+	.step-circle svg {
+		width: 16px;
+		height: 16px;
+	}
+
+	/* Completed = green */
+	.step-circle--completed {
+		background: oklch(0.54 0.16 150);
+		color: oklch(1 0 0);
+	}
+
+	/* Current = yellow/amber */
+	.step-circle--current {
+		background: oklch(0.75 0.15 85);
+		color: oklch(0.3 0.08 85);
+		box-shadow: 0 0 0 4px oklch(0.75 0.15 85 / 0.25);
+	}
+
+	/* Rejected = red */
+	.step-circle--rejected {
+		background: oklch(0.58 0.2 25);
+		color: oklch(1 0 0);
+		box-shadow: 0 0 0 4px oklch(0.58 0.2 25 / 0.2);
+	}
+
+	/* Upcoming = soft blue (not yet reached, normal flow) */
+	.step-circle--upcoming {
+		background: oklch(0.88 0.06 240);
+		color: oklch(0.45 0.14 240);
+	}
+
+	/* Disabled = gray (after a rejected step) */
+	.step-circle--disabled {
+		background: oklch(0.92 0.005 180);
+		color: oklch(0.55 0.02 180);
+	}
+
+	/* Connector line */
+	.step-connector {
+		flex: 1;
+		height: 3px;
+		border-radius: 2px;
+		min-width: 24px;
+	}
+
+	.step-connector--completed {
+		background: oklch(0.54 0.16 150);
+	}
+
+	.step-connector--current {
+		background: linear-gradient(90deg, oklch(0.54 0.16 150), oklch(0.75 0.15 85));
+	}
+
+	.step-connector--rejected {
+		background: linear-gradient(90deg, oklch(0.54 0.16 150), oklch(0.58 0.2 25));
+	}
+
+	.step-connector--upcoming {
+		background: oklch(0.88 0.06 240);
+	}
+
+	.step-connector--disabled {
+		background: oklch(0.92 0.005 180);
+	}
+
+	/* Labels */
+	.step-label {
+		margin-top: 8px;
+		font-size: 0.75rem;
+		text-align: center;
+		max-width: 120px;
+		line-height: 1.4;
+	}
+
+	.step-label--completed {
+		color: oklch(0.45 0.1 150);
+		font-weight: 500;
+	}
+
+	.step-label--current {
+		color: oklch(0.4 0.1 85);
+		font-weight: 600;
+	}
+
+	.step-label--rejected {
+		color: oklch(0.5 0.15 25);
+		font-weight: 600;
+	}
+
+	.step-label--upcoming {
+		color: oklch(0.45 0.14 240);
+	}
+
+	.step-label--disabled {
+		color: oklch(0.6 0.01 180);
+	}
+</style>

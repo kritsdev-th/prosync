@@ -48,10 +48,11 @@ export const load: PageServerLoad = async ({ parent, url }) => {
   const stats: Record<string, unknown> = {};
   const chartData: Record<string, unknown> = {};
 
-  // Determine effective agency_id for queries
-  const effectiveAgencyId = agencyId ? parseInt(agencyId) : user.agency_id;
+  // Determine effective agency_id — require explicit selection
+  const effectiveAgencyId = agencyId ? parseInt(agencyId) : null;
+  const hasScopeSelected = provinceId && agencyId;
 
-  if (user.is_super_admin) {
+  if (user.is_super_admin && hasScopeSelected) {
     // System-wide metrics
     const [agencyCount] = await db.select({ count: count() }).from(agencies);
     const [userCount] = await db
@@ -94,24 +95,36 @@ export const load: PageServerLoad = async ({ parent, url }) => {
           : "oklch(0.52 0.14 240)",
     }));
 
-    // Budget utilization by agency (top 5)
+    // Budget utilization by agency (top 5), split by plan type
     const budgetByAgency = await db
       .select({
         agency_name: agencies.name,
+        plan_type: plans.plan_type,
         total_budget: sql<number>`SUM(${plans.estimated_amount})`,
         used_budget: sql<number>`SUM(${plans.actual_amount})`,
       })
       .from(plans)
       .innerJoin(agencies, eq(plans.agency_id, agencies.id))
-      .groupBy(agencies.name)
+      .groupBy(agencies.name, plans.plan_type)
       .orderBy(desc(sql`SUM(${plans.estimated_amount})`))
-      .limit(5);
+      .limit(10);
 
-    chartData.budgetByAgency = budgetByAgency.map((b) => ({
-      label: b.agency_name,
-      value: Number(b.used_budget) || 0,
-      max: Number(b.total_budget) || 1,
-    }));
+    chartData.budgetByAgency = budgetByAgency.map((b) => {
+      const used = Number(b.used_budget) || 0;
+      const total = Number(b.total_budget) || 1;
+      const isOver = used > total;
+      return {
+        label: `${b.agency_name} (${b.plan_type === "INCOME" ? "รายรับ" : "รายจ่าย"})`,
+        value: used,
+        max: total,
+        color:
+          b.plan_type === "INCOME"
+            ? "oklch(0.54 0.16 150)" // green
+            : isOver
+              ? "oklch(0.58 0.2 25)" // red when over budget
+              : "oklch(0.52 0.14 240)", // blue otherwise
+      };
+    });
 
     // Monthly document trends not available (documents table has no created_at column)
     chartData.monthlyDocuments = [];
