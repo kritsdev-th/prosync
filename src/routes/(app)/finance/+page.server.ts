@@ -9,6 +9,7 @@ import {
 	bankTransactions,
 	taxTransactions,
 	agencies,
+	provinces,
 	bank
 } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
@@ -38,18 +39,31 @@ interface BankAccountRow {
 
 export const load: PageServerLoad = async ({ parent, url }) => {
 	const { user } = await parent();
-	const agencyId = user.is_super_admin
-		? Number(url.searchParams.get('agency_id')) || null
-		: user.agency_id;
+
+	let provincesList: { id: number; name: string }[] = [];
+	let agencyList: { id: number; name: string; agency_type: string | null; province_id: number }[] = [];
+	let selectedProvinceId: number | null = null;
+	let agencyId: number | null = null;
+
+	if (user.is_super_admin) {
+		provincesList = await db.select({ id: provinces.id, name: provinces.name }).from(provinces).orderBy(provinces.name);
+		const pidParam = url.searchParams.get('province_id');
+		if (pidParam) {
+			selectedProvinceId = Number(pidParam);
+			agencyList = await db
+				.select({ id: agencies.id, name: agencies.name, agency_type: agencies.agency_type, province_id: agencies.province_id })
+				.from(agencies)
+				.where(eq(agencies.province_id, selectedProvinceId));
+		}
+		const aidParam = url.searchParams.get('agency_id');
+		if (aidParam) agencyId = Number(aidParam);
+	} else {
+		agencyId = user.agency_id;
+	}
 
 	let dikaList: DikaRow[] = [];
 	let accountList: BankAccountRow[] = [];
-	let agencyList: typeof agencies.$inferSelect[] = [];
 	let taxList: typeof taxTransactions.$inferSelect[] = [];
-
-	if (user.is_super_admin) {
-		agencyList = await db.select().from(agencies);
-	}
 
 	if (agencyId) {
 		dikaList = await db
@@ -93,7 +107,9 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 		dikaVouchers: dikaList,
 		bankAccounts: accountList,
 		taxTransactions: taxList,
+		provinces: provincesList,
 		agencies: agencyList,
+		selectedProvinceId,
 		selectedAgencyId: agencyId
 	};
 };

@@ -153,7 +153,7 @@
 </div>
 
 <style>
-	.page-container { animation: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1); max-width: 800px; }
+	.page-container { animation: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
 
 	.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin: 20px 0 24px; gap: 16px; }
 	.page-title { margin: 0 0 4px 0; font-size: clamp(1.375rem, 1.1rem + 0.7vw, 1.625rem); font-weight: 700; color: oklch(0.2 0.02 180); }

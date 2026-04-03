@@ -4,6 +4,7 @@
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import ScopeSelector from '$lib/components/ScopeSelector.svelte';
 	import { formatBaht, formatNumber, exportToCsv } from '$lib/utils/format';
 
 	let { data, form: formResult } = $props();
@@ -43,18 +44,16 @@
 <div>
 	<PageHeader title="การเงินและเบิกจ่าย" subtitle="จัดการฎีกาเบิกจ่าย บัญชีธนาคาร และภาษี" />
 
-	{#if data.user.is_super_admin && data.agencies.length > 0}
-		<div class="mt-4">
-			<select
-				onchange={(e) => goto(`/finance?agency_id=${(e.target as HTMLSelectElement).value}`)}
-				class="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-			>
-				<option value="">-- เลือกหน่วยงาน --</option>
-				{#each data.agencies as agency}
-					<option value={agency.id} selected={data.selectedAgencyId === agency.id}>{agency.name}</option>
-				{/each}
-			</select>
-		</div>
+	{#if data.user.is_super_admin}
+		<ScopeSelector
+			provinces={data.provinces}
+			agencies={data.agencies}
+			orgUnits={[]}
+			selectedProvinceId={data.selectedProvinceId}
+			selectedAgencyId={data.selectedAgencyId}
+			isSuperAdmin={true}
+			basePath="/finance"
+		/>
 	{/if}
 
 	{#if formResult?.message}
