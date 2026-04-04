@@ -67,7 +67,7 @@
 
 <div>
 	<div class="mb-6">
-		<BackButton href="/procurement/tasks" label="กลับหน้างานที่รอดำเนินการ" />
+		<BackButton href="/procurement/documents" label="กลับหน้าเอกสารดำเนินการ" />
 		<h1 style="margin: 8px 0 4px 0; font-size: clamp(1.375rem, 1.1rem + 0.7vw, 1.625rem); font-weight: 700; color: oklch(0.2 0.02 180);">เอกสาร #{data.document.id}</h1>
 		<p class="text-sm text-gray-500">
 			{data.workflow.name} | แผน: {data.plan.title}
