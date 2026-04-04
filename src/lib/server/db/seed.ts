@@ -386,11 +386,12 @@ async function seed() {
 		banks = await db
 			.insert(schema.bank)
 			.values([
-				{ bank_code: 'BBL', name: 'ธนาคารกรุงเทพ' },
-				{ bank_code: 'KBANK', name: 'ธนาคารกสิกรไทย' },
-				{ bank_code: 'KTB', name: 'ธนาคารกรุงไทย' },
-				{ bank_code: 'SCB', name: 'ธนาคารไทยพาณิชย์' },
-				{ bank_code: 'TMB', name: 'ธนาคารทหารไทยธนชาต' }
+				{ bank_code: 'BBL', name: 'ธนาคารกรุงเทพ', logo_url: '/Bank_logo/BBL.png' },
+				{ bank_code: 'KBANK', name: 'ธนาคารกสิกรไทย', logo_url: '/Bank_logo/KBANK.png' },
+				{ bank_code: 'KTB', name: 'ธนาคารกรุงไทย', logo_url: '/Bank_logo/KTB.png' },
+				{ bank_code: 'SCB', name: 'ธนาคารไทยพาณิชย์', logo_url: '/Bank_logo/SCB.png' },
+				{ bank_code: 'TTB', name: 'ธนาคารทหารไทยธนชาต', logo_url: '/Bank_logo/TTB.png' },
+				{ bank_code: 'GSB', name: 'ธนาคารออมสิน', logo_url: '/Bank_logo/GSB.png' }
 			])
 			.returning();
 		console.log('✅ Banks seeded');

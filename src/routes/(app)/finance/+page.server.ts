@@ -35,6 +35,8 @@ interface BankAccountRow {
 	balance: string;
 	is_tax_pool: boolean;
 	bank_name: string;
+	bank_code: string;
+	bank_logo: string | null;
 }
 
 export const load: PageServerLoad = async ({ parent, url }) => {
@@ -90,7 +92,9 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 				account_number: bankAccounts.account_number,
 				balance: bankAccounts.balance,
 				is_tax_pool: bankAccounts.is_tax_pool,
-				bank_name: bank.name
+				bank_name: bank.name,
+				bank_code: bank.bank_code,
+				bank_logo: bank.logo_url
 			})
 			.from(bankAccounts)
 			.innerJoin(bank, eq(bankAccounts.bank_id, bank.id))
@@ -103,7 +107,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 	}
 
 	// Load bank list for account creation dropdown
-	const bankList = await db.select({ id: bank.id, name: bank.name, bank_code: bank.bank_code }).from(bank);
+	const bankList = await db.select({ id: bank.id, name: bank.name, bank_code: bank.bank_code, logo_url: bank.logo_url }).from(bank);
 
 	return {
 		user,

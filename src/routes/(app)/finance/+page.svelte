@@ -147,13 +147,18 @@
 		<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 			{#each data.bankAccounts as account}
 				<div class="rounded-xl border bg-white p-5 shadow-sm">
-					<div class="flex items-center justify-between">
-						<div>
+					<div class="flex items-center gap-3">
+						{#if account.bank_logo}
+							<img src={account.bank_logo} alt={account.bank_name} class="bank-logo" />
+						{:else}
+							<div class="bank-logo-fallback">{account.bank_code}</div>
+						{/if}
+						<div class="flex-1 min-w-0">
 							<h3 class="font-medium text-gray-900">{account.account_name}</h3>
 							<p class="text-sm text-gray-500">{account.bank_name} | {account.account_number}</p>
 						</div>
 						{#if account.is_tax_pool}
-							<span class="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">บัญชีภาษี</span>
+							<span class="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700 flex-shrink-0">บัญชีภาษี</span>
 						{/if}
 					</div>
 					<p class="mt-3 text-2xl font-bold text-gray-900">
@@ -253,5 +258,25 @@
 {/if}
 
 <style>
-	@keyframes scale-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+	@keyframes scale-in { from { opacity: 0; } to { opacity: 1; } }
+	.bank-logo {
+		width: 36px;
+		height: 36px;
+		object-fit: contain;
+		border-radius: 8px;
+		flex-shrink: 0;
+	}
+	.bank-logo-fallback {
+		width: 36px;
+		height: 36px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 8px;
+		background: #e3f2fd;
+		color: #1565c0;
+		font-size: 0.625rem;
+		font-weight: 700;
+		flex-shrink: 0;
+	}
 </style>
