@@ -906,3 +906,21 @@ Public sector systems require exact PDF generation for official forms (e.g., for
     - Fonts: MUST embed and use official Thai government fonts (e.g., TH Sarabun PSK or TH Sarabun New).
   - Data Tables & Reports: - The UI Agent MUST implement a "Print View" using CSS @media print (hiding sidebars, navbars, and buttons) for simple tabular data.
     - The Fullstack Agent MUST provide CSV/Excel export endpoints using libraries like exceljs or standard CSV stringification, setting the correct Content-Type: text/csv; charset=utf-8 header with BOM (Byte Order Mark) to ensure Thai characters render correctly in MS Excel.
+
+
+
+Seed Users (password: password1234)
+Role	Email	ทำอะไรใน Workflow
+ผู้อำนวยการ (DIRECTOR)	director@hospital.go.th	อนุมัติขั้นที่ 3, 6, 10, 13
+รอง ผอ. (REVIEWER)	vice-director@hospital.go.th	เห็นชอบขั้นที่ 2, 5, 9, 12
+หัวหน้าพัสดุ (REVIEWER)	procurement-head@hospital.go.th	หัวหน้าหน่วยพัสดุ
+เจ้าหน้าที่พัสดุ (CREATOR)	procurement1@hospital.go.th	จัดทำเอกสาร ขั้นที่ 1, 4, 7, 8, 11, 15
+เจ้าหน้าที่พัสดุ 2	procurement2@hospital.go.th	สำรอง
+หัวหน้าการเงิน	finance-head@hospital.go.th	ตรวจฎีกา
+เจ้าหน้าที่การเงิน	finance1@hospital.go.th	จัดทำฎีกา
+กรรมการ 1-3	committee1-3@hospital.go.th	ตรวจรับพัสดุ (ขั้นที่ 14)
+To apply:
+
+npm run db:push          # push schema to database
+npm run db:custom        # run all custom migrations
+npm run db:seed          # seed workflow users + 15-step workflow
