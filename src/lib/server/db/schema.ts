@@ -58,6 +58,7 @@ export const users = pgTable('users', {
 	phone: varchar('phone', { length: 20 }),
 	is_super_admin: boolean('is_super_admin').notNull().default(false),
 	profile_completed: boolean('profile_completed').notNull().default(false),
+	profile_picture: text('profile_picture'),
 	deleted_at: timestamp('deleted_at', { withTimezone: true })
 });
 

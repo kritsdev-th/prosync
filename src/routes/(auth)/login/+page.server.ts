@@ -100,6 +100,7 @@ export const actions: Actions = {
 				id_card: user.id_card,
 				name: user.name,
 				position_rank: user.position_rank ?? null,
+				profile_picture: user.profile_picture ?? null,
 				agency_id: user.agency_id,
 				is_super_admin: user.is_super_admin,
 				is_director: isDirector,

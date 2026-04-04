@@ -58,7 +58,7 @@
 
 		<!-- Branding -->
 		<div class="error-footer">
-			<img src="/prosync-erp.png" alt="ProSync ERP" class="error-logo" />
+			<img src="/PROSYNC-ERP.png" alt="ProSync ERP" class="error-logo" />
 			<span>ProSync ERP</span>
 		</div>
 	</div>

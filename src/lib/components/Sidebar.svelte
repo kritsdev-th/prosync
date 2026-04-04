@@ -43,17 +43,14 @@
 	style="border-color: oklch(0.90 0.012 180 / 0.8);"
 >
 	<!-- Brand -->
-	<div class="group flex h-16 items-center gap-3 border-b px-5 transition-colors duration-200"
+	<div class="group flex h-20 items-center gap-3 border-b px-4 transition-colors duration-200"
 		style="border-color: oklch(0.94 0.008 180 / 0.6);"
 	>
-		<div class="relative flex h-10 w-10 items-center justify-center">
-			<div class="absolute inset-0 rounded-xl bg-gradient-to-br from-health-100 to-brand-100 opacity-80 transition-opacity duration-300 group-hover:opacity-100"></div>
-			<img 
-				src="/prosync-erp.png" 
-				alt="ProSync ERP" 
-				class="relative h-6 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
-			/>
-		</div>
+		<img
+			src="/PROSYNC-ERP.png"
+			alt="ProSync ERP"
+			class="h-16 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+		/>
 		<div class="flex flex-col">
 			<span class="text-base font-bold tracking-tight" style="color: oklch(0.30 0.045 180);">ProSync ERP</span>
 			<span class="text-[10px] font-medium" style="color: oklch(0.58 0.030 180);">Organizational Development</span>

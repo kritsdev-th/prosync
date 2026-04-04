@@ -3,6 +3,7 @@ export interface JWTPayload {
 	id_card: string; // users.id_card
 	name: string; // users.name
 	position_rank: string | null; // users.position_rank (job title)
+	profile_picture: string | null; // users.profile_picture URL
 	agency_id: number | null; // agencies.id (null for super admin)
 	is_super_admin: boolean;
 	is_director: boolean;

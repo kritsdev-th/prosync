@@ -14,6 +14,7 @@ async function buildJWTPayload(userId: number): Promise<JWTPayload | null> {
 			id_card: users.id_card,
 			name: users.name,
 			position_rank: users.position_rank,
+			profile_picture: users.profile_picture,
 			agency_id: users.agency_id,
 			is_super_admin: users.is_super_admin,
 			profile_completed: users.profile_completed
@@ -73,6 +74,7 @@ async function buildJWTPayload(userId: number): Promise<JWTPayload | null> {
 		id_card: user.id_card,
 		name: user.name,
 		position_rank: user.position_rank ?? null,
+		profile_picture: user.profile_picture ?? null,
 		agency_id: user.agency_id,
 		is_super_admin: user.is_super_admin,
 		is_director: isDirector,

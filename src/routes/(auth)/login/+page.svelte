@@ -10,241 +10,309 @@
 	<title>เข้าสู่ระบบ | ProSync ERP</title>
 </svelte:head>
 
-<div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-600 via-brand-500 to-health-500 px-4 py-12">
-	<!-- Animated background patterns -->
-	<div class="absolute inset-0 overflow-hidden">
-		<div class="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-white/10 blur-3xl animate-pulse"></div>
-		<div class="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-white/10 blur-3xl animate-pulse" style="animation-delay: 1s;"></div>
-		<div class="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-health-400/10 blur-3xl"></div>
-	</div>
-
-	<!-- Grid pattern overlay -->
-	<div class="absolute inset-0 opacity-[0.03]" 
-		style="background-image: linear-gradient(oklch(1 0 0) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0) 1px, transparent 1px); background-size: 40px 40px;">
-	</div>
-
-	<!-- Main Card -->
-	<div class="relative z-10 flex w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl animate-in slide-up"
-		style="box-shadow: 0 25px 50px -12px oklch(0.58 0.030 180 / 0.25);">
-		
-		<!-- Left Section - Branding -->
-		<div class="hidden w-1/2 flex-col items-center justify-center bg-gradient-to-br from-brand-600/90 via-brand-500/90 to-health-500/90 p-8 lg:flex">
-			<!-- Logo -->
-			<div class="mb-6 overflow-hidden rounded-2xl bg-white/95 p-6 shadow-xl">
-				<img src="/prosync-erp.png" alt="ProSync ERP" class="h-16 w-auto object-contain" />
-			</div>
-
-			<!-- Brand name -->
-			<h1 class="text-2xl font-bold tracking-tight text-white mb-2">ProSync ERP</h1>
-			<p class="text-sm leading-relaxed text-white/80 text-center mb-6">
-				ระบบบริหารจัดการยุทธศาสตร์และติดตามแผนพัฒนาองค์การ
-			</p>
-
-			<!-- Feature highlights -->
-			<div class="grid w-full grid-cols-2 gap-3">
-				<div class="flex flex-col items-center gap-1.5 rounded-xl bg-white/10 backdrop-blur-sm p-3 border border-white/20">
-					<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
-						<svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-						</svg>
-					</div>
-					<span class="text-xs font-medium text-white/90">มาตรฐาน ISO</span>
-				</div>
-				<div class="flex flex-col items-center gap-1.5 rounded-xl bg-white/10 backdrop-blur-sm p-3 border border-white/20">
-					<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
-						<svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-						</svg>
-					</div>
-					<span class="text-xs font-medium text-white/90">ปลอดภัยสูง</span>
-				</div>
-				<div class="flex flex-col items-center gap-1.5 rounded-xl bg-white/10 backdrop-blur-sm p-3 border border-white/20">
-					<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
-						<svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-						</svg>
-					</div>
-					<span class="text-xs font-medium text-white/90">รวดเร็ว</span>
-				</div>
-				<div class="flex flex-col items-center gap-1.5 rounded-xl bg-white/10 backdrop-blur-sm p-3 border border-white/20">
-					<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
-						<svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.941 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-						</svg>
-					</div>
-					<span class="text-xs font-medium text-white/90">ใช้งานง่าย</span>
-				</div>
+<div class="page">
+	<div class="card">
+		<!-- Left: illustration -->
+		<div class="hero">
+			<img src="/login.gif" alt="" class="hero-gif" />
+			<div class="hero-fade"></div>
+			<div class="hero-bottom">
+				<p class="hero-tagline">ระบบบริหารจัดการยุทธศาสตร์<br/>และติดตามแผนพัฒนาองค์การ</p>
 			</div>
 		</div>
 
-		<!-- Right Section - Login Form -->
-		<div class="flex w-full lg:w-1/2 flex-col justify-center bg-gradient-to-br from-slate-50 via-brand-50/20 to-health-50/20 p-8 md:p-10">
-			<!-- Mobile Logo (visible only on small screens) -->
-			<div class="mb-6 text-center lg:hidden">
-				<div class="mx-auto mb-3 overflow-hidden rounded-xl bg-white p-3 shadow-lg">
-					<img src="/prosync-erp.png" alt="ProSync ERP" class="h-10 w-auto object-contain" />
+		<!-- Right: form -->
+		<div class="body">
+			<div class="body-inner">
+				<!-- Logo -->
+				<div class="logo-row">
+					<img src="/PROSYNC-ERP.png" alt="ProSync ERP" class="logo-img" />
 				</div>
-				<h1 class="text-xl font-bold tracking-tight" style="color: oklch(0.38 0.040 180);">ProSync ERP</h1>
-			</div>
 
-			<!-- Welcome text -->
-			<div class="mb-6">
-				<h2 class="text-2xl font-bold" style="color: oklch(0.38 0.040 180);">ยินดีต้อนรับกลับ</h2>
-				<p class="mt-1 text-sm" style="color: oklch(0.58 0.030 180);">กรุณากรอกข้อมูลเพื่อเข้าสู่ระบบ</p>
-			</div>
+				<h1 class="title">เข้าสู่ระบบ</h1>
+				<p class="subtitle">ใช้บัญชีของคุณเพื่อเข้าสู่ ProSync ERP</p>
 
-			<!-- Login Form -->
-			<form
-				method="POST"
-				use:enhance={() => {
-					loading = true;
-					return async ({ update }) => {
-						loading = false;
-						await update();
-					};
-				}}
-			>
-				<div class="space-y-4">
-					<!-- Identifier Input (ID Card / Email / Phone) -->
-					<div>
-						<label for="identifier" class="mb-1.5 block text-sm font-semibold" style="color: oklch(0.38 0.040 180);">
-							เข้าสู่ระบบด้วย
-						</label>
-						<div class="relative">
-							<div class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-								<svg class="h-5 w-5" style="color: oklch(0.70 0.025 180);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-								</svg>
-							</div>
-							<input
-								type="text"
-								id="identifier"
-								name="identifier"
-								placeholder="เลขบัตรประชาชน, อีเมล หรือเบอร์โทร"
-								autocomplete="username"
-								class="block w-full rounded-xl border border-gray-200 bg-gray-50/80 pl-10 pr-4 py-2.5 text-sm
-									transition-all duration-200 ease-out-quart
-									placeholder:text-gray-400
-									hover:border-gray-300 hover:bg-white
-									focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:outline-none"
-								required
-							/>
-						</div>
-						{#if form?.errors?.identifier}
-							<p class="mt-1.5 flex items-center gap-1.5 text-xs" style="color: oklch(0.58 0.18 25);">
-								<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-								</svg>
-								{form.errors.identifier[0]}
-							</p>
-						{/if}
+				{#if form?.errors?.identifier}
+					<div class="alert">
+						<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" /></svg>
+						<span>{form.errors.identifier[0]}</span>
 					</div>
+				{/if}
 
-					<!-- Password Input -->
-					<div>
-						<label for="password" class="mb-1.5 block text-sm font-semibold" style="color: oklch(0.38 0.040 180);">
-							รหัสผ่าน
-						</label>
-						<div class="relative">
-							<div class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-								<svg class="h-5 w-5" style="color: oklch(0.70 0.025 180);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-								</svg>
-							</div>
-							<input
-								type={showPassword ? 'text' : 'password'}
-								id="password"
-								name="password"
-								placeholder="กรอกรหัสผ่าน"
-								autocomplete="current-password"
-								class="block w-full rounded-xl border border-gray-200 bg-gray-50/80 pl-10 pr-12 py-2.5 text-sm
-									transition-all duration-200 ease-out-quart
-									placeholder:text-gray-400
-									hover:border-gray-300 hover:bg-white
-									focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:outline-none"
-								required
-							/>
-							<button
-								type="button"
-								onclick={() => (showPassword = !showPassword)}
-								class="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 transition-colors hover:bg-gray-100"
-								style="color: oklch(0.70 0.025 180);"
-							>
-								{#if showPassword}
-									<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-									</svg>
-								{:else}
-									<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-									</svg>
-								{/if}
-							</button>
+				<form
+					method="POST"
+					use:enhance={() => {
+						loading = true;
+						return async ({ update }) => { loading = false; await update(); };
+					}}
+				>
+					<fieldset disabled={loading} class="fields">
+						<div class="field">
+							<label for="identifier">บัญชีผู้ใช้</label>
+							<input id="identifier" name="identifier" type="text" placeholder="เลขบัตรประชาชน, อีเมล หรือเบอร์โทร" autocomplete="username" required />
 						</div>
-					</div>
 
-					<!-- Submit Button -->
-					<button
-						type="submit"
-						disabled={loading}
-						class="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg
-							transition-all duration-300 ease-out-expo
-							hover:shadow-xl hover:shadow-brand-500/30 hover:scale-[1.02]
-							focus:ring-4 focus:ring-brand-500/30 focus:outline-none
-							active:scale-[0.98]
-							disabled:opacity-70 disabled:pointer-events-none disabled:cursor-not-allowed"
-					>
-						<div class="absolute inset-0 bg-gradient-to-r from-brand-500 to-health-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
-						<span class="relative inline-flex items-center justify-center gap-2">
+						<div class="field">
+							<label for="password">รหัสผ่าน</label>
+							<div class="pw-wrap">
+								<input id="password" name="password" type={showPassword ? 'text' : 'password'} placeholder="กรอกรหัสผ่าน" autocomplete="current-password" required />
+								<button type="button" class="eye" tabindex="-1" onclick={() => showPassword = !showPassword}>
+									{#if showPassword}
+										<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+									{:else}
+										<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+									{/if}
+								</button>
+							</div>
+						</div>
+
+						<button type="submit" class="btn-submit">
 							{#if loading}
-								<svg class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
-									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-								</svg>
+								<span class="spinner"></span>
 								กำลังเข้าสู่ระบบ...
 							{:else}
 								เข้าสู่ระบบ
-								<svg class="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-								</svg>
 							{/if}
-						</span>
-					</button>
-				</div>
-			</form>
+						</button>
+					</fieldset>
+				</form>
 
-			<!-- Register link -->
-			<div class="mt-6 text-center">
-				<p class="text-sm" style="color: oklch(0.58 0.030 180);">
-					ยังไม่มีบัญชี?
-					<a href="/register" class="font-semibold transition-colors hover:underline" style="color: oklch(0.52 0.14 240);">
-						ลงทะเบียนใช้งาน
-					</a>
-				</p>
+				<p class="switch">ยังไม่มีบัญชี? <a href="/register">ลงทะเบียนใช้งาน</a></p>
 			</div>
-
-			<!-- Help info -->
-			<div class="mt-5 rounded-xl bg-gradient-to-br from-brand-50 to-health-50 p-3.5">
-				<div class="flex items-start gap-2.5">
-					<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm">
-						<svg class="h-3.5 w-3.5" style="color: oklch(0.52 0.14 240);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-						</svg>
-					</div>
-					<div>
-						<p class="text-xs font-semibold" style="color: oklch(0.45 0.12 240);">ต้องการความช่วยเหลือ?</p>
-						<p class="mt-0.5 text-xs leading-relaxed" style="color: oklch(0.58 0.030 180);">
-							ติดต่อผู้ดูแลระบบหากมีปัญหาในการเข้าสู่ระบบ
-						</p>
-					</div>
-				</div>
-			</div>
-
-			<!-- Footer -->
-			<p class="mt-6 text-center text-xs" style="color: oklch(0.58 0.030 180);">
-				ProSync ERP v1.0 &copy; {new Date().getFullYear()}
-			</p>
 		</div>
 	</div>
 </div>
+
+<style>
+	.page {
+		min-height: 100vh;
+		display: grid;
+		place-items: center;
+		background: oklch(0.955 0.01 230);
+		padding: clamp(16px, 4vw, 40px);
+		font-family: 'Noto Sans Thai', system-ui, sans-serif;
+	}
+
+	.card {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		width: 100%;
+		max-width: 920px;
+		min-height: 540px;
+		border-radius: 24px;
+		overflow: hidden;
+		background: oklch(0.995 0.003 230);
+		box-shadow:
+			0 1px 2px oklch(0.2 0.02 230 / 0.06),
+			0 8px 32px oklch(0.2 0.02 230 / 0.08);
+		animation: rise 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	/* ---------- hero (left) ---------- */
+	.hero {
+		position: relative;
+		background: oklch(0.855 0.018 230);
+		overflow: hidden;
+	}
+	.hero-gif {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		opacity: 1;
+	}
+	.hero-fade {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(
+			to top,
+			oklch(0.22 0.03 230 / 0.92) 0%,
+			transparent 40%
+		);
+	}
+	.hero-bottom {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		padding: 32px;
+	}
+	.hero-tagline {
+		margin: 0;
+		font-size: 0.85rem;
+		line-height: 1.65;
+		color: oklch(0.92 0.01 230);
+	}
+
+	/* ---------- body (right) ---------- */
+	.body {
+		display: flex;
+		align-items: flex-start;
+		justify-content: center;
+		padding: clamp(32px, 5vw, 56px) clamp(28px, 4vw, 48px);
+		padding-top: clamp(100px, 14vw, 140px);
+		position: relative;
+	}
+	.body-inner {
+		width: 100%;
+		max-width: 340px;
+	}
+
+	/* Logo */
+	.logo-row {
+		position: absolute;
+		top: 20px;
+		right: 24px;
+	}
+	.logo-img {
+		height: 112px;
+		width: auto;
+		display: block;
+	}
+
+	.title {
+		margin: 0 0 4px;
+		font-size: clamp(1.35rem, 2.2vw, 1.625rem);
+		font-weight: 700;
+		color: oklch(0.2 0.025 230);
+	}
+	.subtitle {
+		margin: 0 0 28px;
+		font-size: 0.85rem;
+		color: oklch(0.52 0.02 230);
+	}
+
+	/* ---------- alert ---------- */
+	.alert {
+		display: flex;
+		gap: 8px;
+		padding: 10px 14px;
+		border-radius: 10px;
+		background: oklch(0.96 0.03 25);
+		margin-bottom: 20px;
+		animation: rise 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+	.alert svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; color: oklch(0.52 0.18 25); }
+	.alert span { font-size: 0.8rem; color: oklch(0.42 0.06 25); line-height: 1.5; }
+
+	/* ---------- fields ---------- */
+	.fields {
+		display: flex;
+		flex-direction: column;
+		gap: 18px;
+		border: none;
+		padding: 0;
+		margin: 0;
+	}
+
+	.field { display: flex; flex-direction: column; gap: 6px; }
+	.field label {
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: oklch(0.38 0.02 230);
+	}
+	.field input, .pw-wrap input {
+		width: 100%;
+		padding: 10px 14px;
+		border: 1.5px solid oklch(0.88 0.012 230);
+		border-radius: 10px;
+		font-family: inherit;
+		font-size: 0.875rem;
+		color: oklch(0.18 0.02 230);
+		background: oklch(0.985 0.004 230);
+		transition: border-color 0.2s ease, box-shadow 0.2s ease;
+	}
+	.field input::placeholder, .pw-wrap input::placeholder {
+		color: oklch(0.62 0.015 230);
+	}
+	.field input:focus, .pw-wrap input:focus {
+		outline: none;
+		border-color: oklch(0.5 0.14 240);
+		box-shadow: 0 0 0 3px oklch(0.5 0.14 240 / 0.08);
+	}
+
+	.pw-wrap { position: relative; }
+	.pw-wrap input { padding-right: 42px; }
+	.eye {
+		position: absolute;
+		right: 4px;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 34px;
+		height: 34px;
+		display: grid;
+		place-items: center;
+		border: none;
+		background: none;
+		cursor: pointer;
+		color: oklch(0.56 0.02 230);
+		border-radius: 8px;
+	}
+	.eye:hover { color: oklch(0.4 0.03 230); background: oklch(0.94 0.008 230); }
+	.eye svg { width: 18px; height: 18px; }
+
+	/* ---------- submit ---------- */
+	.btn-submit {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		width: 100%;
+		height: 44px;
+		border: none;
+		border-radius: 10px;
+		background: oklch(0.44 0.14 240);
+		color: oklch(0.97 0.005 230);
+		font-family: inherit;
+		font-size: 0.9rem;
+		font-weight: 600;
+		cursor: pointer;
+		margin-top: 4px;
+		transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+					box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+					background 0.15s ease;
+		box-shadow: 0 2px 6px oklch(0.44 0.14 240 / 0.18);
+	}
+	.btn-submit:hover:not(:disabled) {
+		transform: translateY(-1px);
+		box-shadow: 0 4px 14px oklch(0.44 0.14 240 / 0.28);
+		background: oklch(0.48 0.15 240);
+	}
+	.btn-submit:active:not(:disabled) { transform: translateY(0); }
+	.btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+
+	.spinner {
+		width: 16px; height: 16px;
+		border: 2.5px solid oklch(0.97 0.005 230 / 0.3);
+		border-top-color: oklch(0.97 0.005 230);
+		border-radius: 50%;
+		animation: spin 0.65s linear infinite;
+	}
+
+	/* ---------- switch ---------- */
+	.switch {
+		margin: 24px 0 0;
+		text-align: center;
+		font-size: 0.8rem;
+		color: oklch(0.52 0.02 230);
+	}
+	.switch a {
+		color: oklch(0.44 0.14 240);
+		font-weight: 600;
+		text-decoration: none;
+	}
+	.switch a:hover { text-decoration: underline; }
+
+	@keyframes rise {
+		from { opacity: 0; transform: translateY(12px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+	@keyframes spin { to { transform: rotate(360deg); } }
+
+	@media (max-width: 720px) {
+		.card { grid-template-columns: 1fr; max-width: 420px; }
+		.hero { display: none; }
+		.logo-row { position: static; display: flex; justify-content: center; margin-bottom: 16px; }
+	}
+</style>

@@ -63,7 +63,11 @@ export const actions: Actions = {
 				can_manage_plans: false,
 				can_manage_procurement: false,
 				can_manage_finance: false,
-				can_view_audit_trail: false
+				can_view_audit_trail: false,
+				can_view_plans: false,
+				can_view_procurement: false,
+				can_view_finance: false,
+				can_view_dashboard: false
 			};
 
 			const assignments = await db
@@ -86,6 +90,8 @@ export const actions: Actions = {
 				sub: newUser.id,
 				id_card: newUser.id_card,
 				name: newUser.name,
+				position_rank: null,
+				profile_picture: null,
 				agency_id: newUser.agency_id,
 				is_super_admin: newUser.is_super_admin,
 				is_director: false,
