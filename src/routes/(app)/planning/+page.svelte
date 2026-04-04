@@ -4,6 +4,7 @@
 	import { formatBaht } from '$lib/utils/format';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
+	import CustomDatePicker from '$lib/components/CustomDatePicker.svelte';
 
 	let { data } = $props();
 	let showCreateModal = $state(false);
@@ -603,15 +604,11 @@
 					<div class="grid grid-cols-2 gap-3">
 						<div>
 							{@render formField('c-start', 'วันที่เริ่ม', true)}
-							<input id="c-start" name="start_date" type="date" required min={parentMinDate || undefined} max={parentMaxDate || undefined}
-								class="mt-1 block w-full rounded-lg px-3 py-2 text-sm outline-none"
-								style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white" />
+							<CustomDatePicker name="start_date" required min={parentMinDate || ''} max={parentMaxDate || ''} id="c-start" class="mt-1" />
 						</div>
 						<div>
 							{@render formField('c-end', 'วันที่สิ้นสุด', true)}
-							<input id="c-end" name="end_date" type="date" required min={parentMinDate || undefined} max={parentMaxDate || undefined}
-								class="mt-1 block w-full rounded-lg px-3 py-2 text-sm outline-none"
-								style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white" />
+							<CustomDatePicker name="end_date" required min={parentMinDate || ''} max={parentMaxDate || ''} id="c-end" class="mt-1" />
 						</div>
 					</div>
 
@@ -768,15 +765,11 @@
 					<div class="grid grid-cols-2 gap-3">
 						<div>
 							{@render formField('e-start', 'วันที่เริ่ม')}
-							<input id="e-start" name="start_date" type="date" value={editingPlan.start_date || ''} min={editParent?.start_date || undefined} max={editParent?.end_date || undefined}
-								class="mt-1 block w-full rounded-lg px-3 py-2 text-sm outline-none"
-								style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white" />
+							<CustomDatePicker name="start_date" value={editingPlan.start_date || ''} min={editParent?.start_date || ''} max={editParent?.end_date || ''} id="e-start" class="mt-1" />
 						</div>
 						<div>
 							{@render formField('e-end', 'วันที่สิ้นสุด')}
-							<input id="e-end" name="end_date" type="date" value={editingPlan.end_date || ''} min={editParent?.start_date || undefined} max={editParent?.end_date || undefined}
-								class="mt-1 block w-full rounded-lg px-3 py-2 text-sm outline-none"
-								style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white" />
+							<CustomDatePicker name="end_date" value={editingPlan.end_date || ''} min={editParent?.start_date || ''} max={editParent?.end_date || ''} id="e-end" class="mt-1" />
 						</div>
 					</div>
 

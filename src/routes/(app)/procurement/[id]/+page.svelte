@@ -3,6 +3,7 @@
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
+	import CustomDatePicker from '$lib/components/CustomDatePicker.svelte';
 	import { formatThaiDateTime, formatBaht, formatNumber } from '$lib/utils/format';
 	import { goto } from '$app/navigation';
 
@@ -307,11 +308,11 @@
 							<div class="grid grid-cols-2 gap-3">
 								<div>
 									<label for="contract_start" class="block text-sm font-medium text-gray-700">วันที่เริ่มสัญญา</label>
-									<input type="date" id="contract_start" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+									<CustomDatePicker id="contract_start" name="contract_start" class="mt-1" />
 								</div>
 								<div>
 									<label for="contract_end" class="block text-sm font-medium text-gray-700">วันที่สิ้นสุดสัญญา</label>
-									<input type="date" id="contract_end" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+									<CustomDatePicker id="contract_end" name="contract_end" class="mt-1" />
 								</div>
 							</div>
 						{/if}
@@ -319,7 +320,7 @@
 						{#if compType === 'inspection_form'}
 							<div>
 								<label for="delivery_date" class="block text-sm font-medium text-gray-700">วันที่ส่งมอบ</label>
-								<input type="date" id="delivery_date" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+								<CustomDatePicker id="delivery_date" name="delivery_date" class="mt-1" />
 							</div>
 						{/if}
 

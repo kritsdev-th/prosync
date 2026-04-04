@@ -4,6 +4,7 @@
 	import BackButton from '$lib/components/BackButton.svelte';
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { formatBaht, formatThaiDate, exportToCsv } from '$lib/utils/format';
+	import CustomDatePicker from '$lib/components/CustomDatePicker.svelte';
 
 	let { data, form: formResult } = $props();
 	let showCreateModal = $state(false);
@@ -210,7 +211,7 @@
 					<input type="hidden" name="province_id" value={data.selectedProvinceId} />
 					<div class="form-field">
 						<label class="form-label">วันที่บังคับใช้ <span class="required">*</span></label>
-						<input name="effective_date" type="date" required class="form-input" />
+						<CustomDatePicker name="effective_date" required />
 					</div>
 				</div>
 				<div class="modal-footer">
@@ -246,7 +247,7 @@
 					</div>
 					<div class="form-field">
 						<label class="form-label">วันที่บังคับใช้</label>
-						<input name="effective_date" type="date" value={editingPrice.effective_date} required class="form-input" />
+						<CustomDatePicker name="effective_date" value={editingPrice.effective_date} required />
 					</div>
 				</div>
 				<div class="modal-footer">
