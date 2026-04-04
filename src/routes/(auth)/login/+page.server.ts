@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { db } from '$lib/server/db';
 import { users, userAssignments, roles, orgUnits } from '$lib/server/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, or } from 'drizzle-orm';
 import { verifyPassword } from '$lib/server/auth/password';
 import { signAccessToken, signRefreshToken } from '$lib/server/auth/jwt';
 import type { JWTPayload } from '$lib/types/auth';
@@ -19,18 +19,27 @@ export const actions: Actions = {
 			return fail(400, { success: false, errors: parsed.errors });
 		}
 
-		const { id_card, password } = parsed.data;
+		const { identifier, password } = parsed.data;
+		const input = identifier.trim();
 
 		try {
+			// Lookup by id_card, email, or phone
 			const [user] = await db
 				.select()
 				.from(users)
-				.where(and(eq(users.id_card, id_card), isNull(users.deleted_at)));
+				.where(and(
+					or(
+						eq(users.id_card, input),
+						eq(users.email, input),
+						eq(users.phone, input)
+					),
+					isNull(users.deleted_at)
+				));
 
 			if (!user) {
 				return fail(400, {
 					success: false,
-					errors: { id_card: ['เลขบัตรประชาชนหรือรหัสผ่านไม่ถูกต้อง'] }
+					errors: { identifier: ['ไม่พบบัญชีผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง'] }
 				});
 			}
 
@@ -38,7 +47,7 @@ export const actions: Actions = {
 			if (!validPassword) {
 				return fail(400, {
 					success: false,
-					errors: { id_card: ['เลขบัตรประชาชนหรือรหัสผ่านไม่ถูกต้อง'] }
+					errors: { identifier: ['ไม่พบบัญชีผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง'] }
 				});
 			}
 
@@ -48,7 +57,11 @@ export const actions: Actions = {
 				can_manage_plans: false,
 				can_manage_procurement: false,
 				can_manage_finance: false,
-				can_view_audit_trail: false
+				can_view_audit_trail: false,
+				can_view_plans: false,
+				can_view_procurement: false,
+				can_view_finance: false,
+				can_view_dashboard: false
 			};
 
 			let isDirector = false;
@@ -86,6 +99,7 @@ export const actions: Actions = {
 				sub: user.id,
 				id_card: user.id_card,
 				name: user.name,
+				position_rank: user.position_rank ?? null,
 				agency_id: user.agency_id,
 				is_super_admin: user.is_super_admin,
 				is_director: isDirector,
@@ -116,7 +130,7 @@ export const actions: Actions = {
 			console.error('Login error:', err);
 			return fail(500, {
 				success: false,
-				errors: { id_card: ['เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง'] }
+				errors: { identifier: ['เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง'] }
 			});
 		}
 

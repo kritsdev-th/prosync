@@ -1,17 +1,18 @@
 <script lang="ts">
 	import type { LayoutData } from './$types';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import NotificationBell from '$lib/components/NotificationBell.svelte';
 
 	let { data, children } = $props();
 	let sidebarOpen = $state(true);
 </script>
 
 <div class="flex h-screen bg-gradient-to-br from-slate-50 via-brand-50/30 to-health-50/20">
-	<Sidebar user={data.user} open={sidebarOpen} />
+	<Sidebar user={data.user} open={sidebarOpen} pendingTaskCount={data.pendingTaskCount} />
 
 	<div class="flex flex-1 flex-col overflow-hidden">
 		<!-- Top Navbar -->
-		<header class="flex h-16 items-center justify-between border-b bg-white/80 px-6 backdrop-blur-md transition-all duration-200"
+		<header class="relative z-40 flex h-16 items-center justify-between border-b bg-white/80 px-6 backdrop-blur-md transition-all duration-200"
 			style="border-color: oklch(0.90 0.012 180 / 0.5); box-shadow: 0 1px 3px 0 oklch(0.58 0.030 180 / 0.06);"
 		>
 			<div class="flex items-center gap-4">
@@ -40,6 +41,9 @@
 			</div>
 
 			<div class="flex items-center gap-3">
+				<!-- Notification Bell -->
+				<NotificationBell initialCount={data.notificationCount} />
+
 				<!-- User info with avatar -->
 				<div class="group flex items-center gap-2.5 rounded-xl bg-white/60 px-3 py-1.5 transition-all duration-200 hover:bg-white hover:shadow-md"
 					style="box-shadow: 0 1px 2px 0 oklch(0.58 0.030 180 / 0.04);"
@@ -51,6 +55,8 @@
 						<span class="text-sm font-medium leading-tight" style="color: oklch(0.38 0.040 180);">{data.user.name}</span>
 						{#if data.user.is_super_admin}
 							<span class="text-[9px] font-medium leading-tight" style="color: oklch(0.54 0.16 150);">Administrator</span>
+						{:else if data.user.position_rank}
+							<span class="text-[9px] font-medium leading-tight" style="color: oklch(0.58 0.030 180);">{data.user.position_rank}</span>
 						{/if}
 					</div>
 				</div>

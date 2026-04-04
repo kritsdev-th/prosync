@@ -8,7 +8,9 @@
 	import { formatBaht, formatNumber, exportToCsv } from '$lib/utils/format';
 
 	let { data, form: formResult } = $props();
+	let canManageFinance = $derived(data.user.is_super_admin || data.user.permissions.can_manage_finance);
 	let activeTab = $state<'dika' | 'accounts' | 'tax'>('dika');
+	let showCreateAccountModal = $state(false);
 	let dikaPage = $state(1);
 	let taxPage = $state(1);
 	const perPage = 20;
@@ -102,7 +104,7 @@
 								<StatusBadge status={dika.status} />
 							</td>
 							<td class="px-4 py-3">
-								{#if dika.status === 'PENDING_EXAMINE'}
+								{#if dika.status === 'PENDING_EXAMINE' && canManageFinance}
 									<div class="flex gap-1">
 										<form method="POST" action="?/approveDika" use:enhance>
 											<input type="hidden" name="dika_id" value={dika.id} />
@@ -132,6 +134,15 @@
 	{/if}
 
 	{#if activeTab === 'accounts'}
+		{#if canManageFinance}
+			<div class="mt-4 flex justify-end">
+				<button onclick={() => (showCreateAccountModal = true)}
+					class="rounded-lg px-3 py-1.5 text-sm font-medium text-white"
+					style="background: oklch(0.52 0.14 240);">
+					+ เพิ่มบัญชีธนาคาร
+				</button>
+			</div>
+		{/if}
 		<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 			{#each data.bankAccounts as account}
 				<div class="rounded-xl border bg-white p-5 shadow-sm">
@@ -195,3 +206,50 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Create Bank Account Modal -->
+{#if showCreateAccountModal}
+	<div class="fixed inset-0 z-50 flex items-center justify-center" style="background: oklch(0.15 0.02 180 / 0.5); backdrop-filter: blur(4px);" onclick={() => (showCreateAccountModal = false)}>
+		<div class="w-full max-w-lg rounded-2xl bg-white p-7 shadow-2xl" style="animation: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);" onclick={(e) => e.stopPropagation()}>
+			<h2 class="mb-5 text-lg font-semibold" style="color: oklch(0.2 0.02 180);">เพิ่มบัญชีธนาคาร</h2>
+			<form method="POST" action="?/createBankAccount" use:enhance={() => {
+				return async ({ update }) => { showCreateAccountModal = false; await update(); };
+			}}>
+				<input type="hidden" name="agency_id" value={data.selectedAgencyId || ''} />
+				<div class="space-y-4">
+					<div>
+						<label class="mb-1 block text-sm font-medium" style="color: oklch(0.35 0.02 180);">ธนาคาร</label>
+						<select name="bank_id" required class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color: oklch(0.82 0.015 180);">
+							<option value="">-- เลือกธนาคาร --</option>
+							{#each data.banks as b}
+								<option value={b.id}>{b.name} ({b.bank_code})</option>
+							{/each}
+						</select>
+					</div>
+					<div>
+						<label class="mb-1 block text-sm font-medium" style="color: oklch(0.35 0.02 180);">ชื่อบัญชี</label>
+						<input name="account_name" required class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color: oklch(0.82 0.015 180);" placeholder="เช่น บัญชีเงินบำรุง" />
+					</div>
+					<div>
+						<label class="mb-1 block text-sm font-medium" style="color: oklch(0.35 0.02 180);">เลขที่บัญชี</label>
+						<input name="account_number" required class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color: oklch(0.82 0.015 180);" placeholder="เช่น 123-4-56789-0" />
+					</div>
+					<div>
+						<label class="flex items-center gap-2 text-sm" style="color: oklch(0.35 0.02 180);">
+							<input type="checkbox" name="is_tax_pool" value="true" />
+							บัญชีพักหักภาษี
+						</label>
+					</div>
+				</div>
+				<div class="mt-6 flex justify-end gap-3">
+					<button type="button" onclick={() => (showCreateAccountModal = false)} class="rounded-lg px-4 py-2 text-sm" style="color: oklch(0.45 0.02 180);">ยกเลิก</button>
+					<button type="submit" class="rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: oklch(0.52 0.14 240);">สร้างบัญชี</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
+<style>
+	@keyframes scale-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+</style>

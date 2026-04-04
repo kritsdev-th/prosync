@@ -7,6 +7,7 @@
 	let editingUnit = $state<any>(null);
 	let searchQuery = $state('');
 	let collapsed = $state(new Set<number>());
+	let canManage = $derived((data as any).canManage ?? false);
 
 	function buildTree(units: any[], parentId: number | null = null): any[] {
 		return units
@@ -83,7 +84,8 @@
 					</div>
 				</a>
 
-				<!-- Actions -->
+				<!-- Actions (only for managers) -->
+				{#if canManage}
 				<div class="node-actions">
 					<button onclick={() => (editingUnit = node)} class="action-btn edit-btn">
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -103,6 +105,7 @@
 						</button>
 					</form>
 				</div>
+				{/if}
 			</div>
 
 			<!-- Children -->
@@ -128,12 +131,14 @@
 				<span class="unit-count">{data.units.length} หน่วยงาน</span>
 			</p>
 		</div>
-		<button onclick={() => (showCreateModal = true)} class="btn-primary">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-			</svg>
-			สร้างแผนก
-		</button>
+		{#if canManage}
+			<button onclick={() => (showCreateModal = true)} class="btn-primary">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+				</svg>
+				สร้างแผนก
+			</button>
+		{/if}
 	</div>
 
 	{#if formResult?.message}

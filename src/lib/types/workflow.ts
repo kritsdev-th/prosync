@@ -1,4 +1,12 @@
-export const STEP_TYPES = ['APPROVAL', 'DOCUMENT_UPLOAD', 'COMMITTEE', 'VENDOR_SCORING'] as const;
+export const STEP_TYPES = [
+	'APPROVAL',
+	'DOCUMENT_UPLOAD',
+	'COMMITTEE',
+	'VENDOR_SCORING',
+	'VENDOR_SCORING_WITH_UPLOAD',
+	'VENDOR_PROPOSAL_WITH_UPLOAD',
+	'EVALUATION_WITH_SCORING'
+] as const;
 export type StepType = (typeof STEP_TYPES)[number];
 
 export const STEP_TYPE_LABELS: Record<StepType, { label: string; desc: string; color: string; bg: string }> = {
@@ -25,6 +33,24 @@ export const STEP_TYPE_LABELS: Record<StepType, { label: string; desc: string; c
 		desc: 'เลือก vendor ให้คะแนน ประกาศผู้ชนะ',
 		color: 'oklch(0.4 0.14 150)',
 		bg: 'oklch(0.54 0.16 150 / 0.1)'
+	},
+	VENDOR_SCORING_WITH_UPLOAD: {
+		label: 'ส่งเชิญชวน + เอกสาร',
+		desc: 'ส่งหนังสือเชิญชวนพร้อมอัปโหลดเอกสารต่อ vendor',
+		color: 'oklch(0.44 0.13 200)',
+		bg: 'oklch(0.54 0.15 200 / 0.1)'
+	},
+	VENDOR_PROPOSAL_WITH_UPLOAD: {
+		label: 'รับข้อเสนอ + เอกสาร',
+		desc: 'รับใบเสนอราคาพร้อมเอกสารจาก vendor',
+		color: 'oklch(0.46 0.12 180)',
+		bg: 'oklch(0.56 0.14 180 / 0.1)'
+	},
+	EVALUATION_WITH_SCORING: {
+		label: 'พิจารณาผล + คะแนน',
+		desc: 'ประกาศคะแนนและอัปโหลดเอกสารรายงานผล',
+		color: 'oklch(0.42 0.15 130)',
+		bg: 'oklch(0.52 0.17 130 / 0.1)'
 	}
 };
 
@@ -40,7 +66,7 @@ export const COMMITTEE_LABELS: Record<CommitteeType, string> = {
 
 /** Infer step type from legacy ui_schema without explicit type field */
 export function inferStepType(uiSchema: any): StepType | null {
-	if (!uiSchema?.components) return null;
+	if (!uiSchema) return null;
 	if (uiSchema.type && STEP_TYPES.includes(uiSchema.type)) return uiSchema.type;
 
 	const comps = uiSchema.components;
@@ -48,6 +74,11 @@ export function inferStepType(uiSchema: any): StepType | null {
 
 	const flat = comps.map((c: any) => (typeof c === 'string' ? c : c.type || '')).join(',');
 
+	if (flat.includes('vendor_invitation_pdf_uploader') || flat.includes('vendor_per_item_pdf_uploader')) {
+		if (flat.includes('vendor_proposal_receiver')) return 'VENDOR_PROPOSAL_WITH_UPLOAD';
+		return 'VENDOR_SCORING_WITH_UPLOAD';
+	}
+	if (flat.includes('bidders_scoring_board') && flat.includes('pdf_uploader')) return 'EVALUATION_WITH_SCORING';
 	if (flat.includes('approval_summary')) return 'APPROVAL';
 	if (flat.includes('committee_selector')) return 'COMMITTEE';
 	if (flat.includes('vendor_multi_selector') || flat.includes('bidders_scoring_board') || flat.includes('vendor_proposal_receiver')) return 'VENDOR_SCORING';
@@ -85,6 +116,26 @@ export function buildUiSchema(type: StepType, config: any): Record<string, any> 
 				components: ['vendor_multi_selector', 'bidders_scoring_board'],
 				min_vendors: config.min_vendors || 3
 			};
+		case 'VENDOR_SCORING_WITH_UPLOAD':
+			return {
+				type: 'vendor_scoring_with_upload',
+				components: ['vendor_multi_selector', 'vendor_invitation_pdf_uploader'],
+				min_vendors: config.min_vendors || 3,
+				required_pdfs: ['หนังสือเชิญชวน']
+			};
+		case 'VENDOR_PROPOSAL_WITH_UPLOAD':
+			return {
+				type: 'vendor_proposal_with_upload',
+				components: ['vendor_proposal_receiver', 'vendor_per_item_pdf_uploader'],
+				write_to_table: 'document_bidders'
+			};
+		case 'EVALUATION_WITH_SCORING':
+			return {
+				type: 'evaluation_with_scoring',
+				components: ['bidders_scoring_board', 'single_pdf_uploader'],
+				read_from_table: 'document_bidders',
+				required_pdfs: config.required_pdfs || ['ใบรายงานผลพิจารณา']
+			};
 	}
 }
 
@@ -109,6 +160,17 @@ export function getStepConfigSummary(uiSchema: any, type: StepType | null): stri
 		case 'VENDOR_SCORING': {
 			const min = uiSchema?.min_vendors || 3;
 			return `ขั้นต่ำ ${min} ราย`;
+		}
+		case 'VENDOR_SCORING_WITH_UPLOAD': {
+			const min = uiSchema?.min_vendors || 3;
+			return `ส่งเชิญชวน ${min} ราย + อัปโหลดเอกสาร`;
+		}
+		case 'VENDOR_PROPOSAL_WITH_UPLOAD': {
+			return 'รับใบเสนอราคา + เอกสารจาก vendor';
+		}
+		case 'EVALUATION_WITH_SCORING': {
+			const pdfs = uiSchema?.required_pdfs || [];
+			return pdfs.length > 0 ? `ให้คะแนน + ${pdfs.join(', ')}` : 'ให้คะแนน + ประกาศผล';
 		}
 	}
 }

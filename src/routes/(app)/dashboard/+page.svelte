@@ -11,7 +11,7 @@
 	let filters = $derived(data.filters as { provinceId: number | null; agencyId: number | null; orgUnitId: number | null });
 
 	let hasScopeSelected = $derived(
-		data.user.is_director
+		!data.user.is_super_admin
 			? true
 			: (filters.provinceId !== null && filters.agencyId !== null)
 	);
@@ -57,17 +57,19 @@
 		isDirector={data.user.is_director}
 	/>
 
-	<!-- Scope Selector -->
-	<ScopeSelector
-		provinces={data.provinces}
-		agencies={data.agencies}
-		orgUnits={data.orgUnits}
-		selectedProvinceId={filters.provinceId}
-		selectedAgencyId={filters.agencyId}
-		selectedOrgUnitId={filters.orgUnitId}
-		isSuperAdmin={data.user.is_super_admin}
-		isDirector={data.user.is_director}
-	/>
+	<!-- Scope Selector: only super admin -->
+	{#if data.user.is_super_admin}
+		<ScopeSelector
+			provinces={data.provinces}
+			agencies={data.agencies}
+			orgUnits={data.orgUnits}
+			selectedProvinceId={filters.provinceId}
+			selectedAgencyId={filters.agencyId}
+			selectedOrgUnitId={filters.orgUnitId}
+			isSuperAdmin={data.user.is_super_admin}
+			isDirector={false}
+		/>
+	{/if}
 
 	{#if hasScopeSelected}
 		<!-- ═══ Agency Context Banner ═══ -->

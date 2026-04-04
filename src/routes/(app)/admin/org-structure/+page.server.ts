@@ -12,7 +12,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.user?.is_super_admin) {
 		const aidParam = url.searchParams.get('agency_id');
 		if (aidParam) agencyFilter = Number(aidParam);
-	} else if (locals.user?.is_director || locals.user?.permissions.can_manage_users) {
+	} else if (locals.user?.agency_id) {
+		// All non-super-admin users are scoped to their own agency
 		agencyFilter = locals.user.agency_id;
 	}
 
@@ -48,7 +49,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				.where(and(isNull(users.deleted_at), eq(users.is_super_admin, false), eq(users.agency_id, agencyFilter)))
 		: await userListQuery;
 
-	return { units, agencies: agencyList, users: userList, agencyFilter };
+	const canManage = locals.user?.is_super_admin || locals.user?.is_director || locals.user?.permissions.can_manage_users || false;
+
+	return { units, agencies: agencyList, users: userList, agencyFilter, canManage };
 };
 
 export const actions: Actions = {

@@ -40,7 +40,7 @@ const monetaryAmount = z.coerce
 // ──────────────────────────────────────────────
 
 export const loginSchema = z.object({
-	id_card: thaiIdCard,
+	identifier: requiredString('เลขบัตรประชาชน, อีเมล หรือเบอร์โทร'),
 	password: requiredString('รหัสผ่าน')
 });
 

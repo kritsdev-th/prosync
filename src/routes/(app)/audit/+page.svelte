@@ -9,11 +9,24 @@
 	let searchQuery = $state('');
 	const perPage = 15;
 
-	const collections = [
+	const allCollections = [
 		{ key: 'plan_budget_histories', label: 'แผนงาน / งบประมาณ' },
 		{ key: 'doc_payload_histories', label: 'เอกสารจัดซื้อจัดจ้าง' },
 		{ key: 'bank_transaction_histories', label: 'การเบิกจ่าย / บัญชี' }
 	];
+
+	// Filter visible tabs: only show tabs for your PRIMARY domain (what you manage)
+	let collections = $derived.by(() => {
+		const u = data.user;
+		if (u.is_super_admin || u.is_director) return allCollections;
+		const p = u.permissions;
+		return allCollections.filter((c) => {
+			if (c.key === 'plan_budget_histories') return p.can_manage_plans;
+			if (c.key === 'doc_payload_histories') return p.can_manage_procurement;
+			if (c.key === 'bank_transaction_histories') return p.can_manage_finance;
+			return false;
+		});
+	});
 
 	const ACTION_STYLES: Record<string, { bg: string; color: string; label: string }> = {
 		CREATE: { bg: 'oklch(0.54 0.16 150 / 0.1)', color: 'oklch(0.38 0.14 150)', label: 'สร้าง' },

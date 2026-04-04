@@ -40,7 +40,7 @@
 	let filterResponsibleUnit = $derived(filterResponsibleUnitStr ? Number(filterResponsibleUnitStr) : null);
 	let filterStakeholderUnit = $derived(filterStakeholderUnitStr ? Number(filterStakeholderUnitStr) : null);
 
-	let canCreate = $derived(!!data.selectedAgencyId);
+	let canCreate = $derived(!!data.selectedAgencyId && (data.user.is_super_admin || data.user.permissions.can_manage_plans));
 
 	function getParentPlan(parentId: number | null) {
 		if (!parentId) return null;
@@ -267,6 +267,7 @@
 
 					<!-- Actions -->
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					{#if canCreate}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div class="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
 						onclick={(e) => e.stopPropagation()}>
@@ -290,6 +291,7 @@
 							<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
 						</button>
 					</div>
+					{/if}
 				</div>
 			</div>
 			</div>
@@ -787,7 +789,7 @@
 							{@render formField('e-outputs', 'ผลผลิตที่คาดหวัง')}
 							<textarea id="e-outputs" name="expected_outputs" rows="3"
 								class="mt-1 block w-full resize-none rounded-lg px-3 py-2 text-sm outline-none"
-								style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white">{Array.isArray(editingPlan.expected_outputs) ? editingPlan.expected_outputs.join('\n') : (editingPlan.expected_outputs || '')}</textarea>
+								style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white">{Array.isArray(editingPlan.expected_outputs) ? editingPlan.expected_outputs.join('\n') : (editingPlan.expected_outputs?.outputs ? editingPlan.expected_outputs.outputs.join('\n') : (typeof editingPlan.expected_outputs === 'string' ? editingPlan.expected_outputs : ''))}</textarea>
 						</div>
 					</div>
 
@@ -963,7 +965,7 @@
 					<div>
 						<p class="text-[0.6875rem] font-medium uppercase tracking-wider" style="color: var(--color-slate-400)">ผลผลิตที่คาดหวัง</p>
 						<div class="mt-2 overflow-y-auto rounded-lg p-3" style="background: var(--color-warning-muted); border: 1px solid oklch(0.90 0.04 85); height: 4rem">
-							<p class="whitespace-pre-wrap text-sm leading-relaxed" style="color: var(--color-slate-700); overflow-wrap: anywhere">{Array.isArray(viewingPlan.expected_outputs) && viewingPlan.expected_outputs.length > 0 ? viewingPlan.expected_outputs.join('\n') : '-'}</p>
+							<p class="whitespace-pre-wrap text-sm leading-relaxed" style="color: var(--color-slate-700); overflow-wrap: anywhere">{Array.isArray(viewingPlan.expected_outputs) && viewingPlan.expected_outputs.length > 0 ? viewingPlan.expected_outputs.join('\n') : (viewingPlan.expected_outputs?.outputs ? viewingPlan.expected_outputs.outputs.join('\n') : '-')}</p>
 						</div>
 					</div>
 				</div>

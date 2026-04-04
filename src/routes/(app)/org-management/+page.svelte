@@ -16,18 +16,18 @@
 		}
 	}
 
-	let agencyId = $derived(
-		data.mode === 'director' ? data.selectedAgencyId : data.selectedAgencyId
-	);
+	let agencyId = $derived(data.selectedAgencyId);
+	let canManage = $derived((data as any).canManage ?? data.mode === 'super_admin');
 
-	const cards = [
+	const allCards = [
 		{
 			title: 'จัดการสิทธิ์ผู้ใช้งาน',
 			desc: 'ค้นหาผู้ใช้ มอบหมายบทบาท/แผนก กำหนดสังกัดหลัก',
 			href: '/admin/users',
 			icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
 			accentColor: 'oklch(0.52 0.14 240)',
-			accentBg: 'oklch(0.52 0.14 240 / 0.08)'
+			accentBg: 'oklch(0.52 0.14 240 / 0.08)',
+			requiresManage: true
 		},
 		{
 			title: 'จัดการบทบาทและสิทธิ์',
@@ -35,17 +35,21 @@
 			href: '/admin/roles',
 			icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
 			accentColor: 'oklch(0.54 0.16 150)',
-			accentBg: 'oklch(0.54 0.16 150 / 0.08)'
+			accentBg: 'oklch(0.54 0.16 150 / 0.08)',
+			requiresManage: true
 		},
 		{
 			title: 'โครงสร้างองค์กร',
-			desc: 'จัดการแผนก หน่วยงาน Tree Hierarchy',
+			desc: 'ดูแผนก หน่วยงาน และบุคลากรในองค์กร',
 			href: '/admin/org-structure',
 			icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
 			accentColor: 'oklch(0.55 0.12 280)',
-			accentBg: 'oklch(0.55 0.12 280 / 0.08)'
+			accentBg: 'oklch(0.55 0.12 280 / 0.08)',
+			requiresManage: false
 		}
 	];
+
+	let cards = $derived(allCards.filter((c) => !c.requiresManage || canManage));
 
 	function cardHref(baseHref: string): string {
 		if (!agencyId) return baseHref;

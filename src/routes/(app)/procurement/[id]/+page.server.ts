@@ -24,6 +24,8 @@ import {
 	generateDikaSchema,
 	parseFormData
 } from '$lib/server/validation/schemas';
+import { assignAndNotify, completeAssignment } from '$lib/server/step-assignments';
+import { createNotification } from '$lib/server/notifications';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
 	const { user } = await parent();
@@ -182,6 +184,14 @@ export const actions: Actions = {
 						ip_address: getClientAddress()
 					}
 				});
+
+				// Complete current user's assignment for the completed step
+				await completeAssignment(docId, currentStep.id, locals.user.sub);
+
+				// Assign and notify users for the next step
+				if (nextStep && !isFinalStep) {
+					await assignAndNotify(docId, nextStep.id, doc.agency_id, nextStep.step_name);
+				}
 			}
 
 			return { success: true, message: `บันทึกขั้นตอน "${currentStep.step_name}" สำเร็จ` };
@@ -272,8 +282,28 @@ export const actions: Actions = {
 				comment: comment ?? null
 			});
 
+			// Complete the approver's assignment
+			if (locals.user) {
+				await completeAssignment(docId, step_id, locals.user.sub);
+			}
+
 			if (action === 'REJECTED') {
 				await db.update(documents).set({ status: 'REJECTED' }).where(eq(documents.id, docId));
+
+				// Notify document creator of rejection
+				const [doc] = await db.select({ updated_by: documents.updated_by }).from(documents).where(eq(documents.id, docId));
+				if (doc?.updated_by) {
+					const [step] = await db.select({ step_name: workflowSteps.step_name }).from(workflowSteps).where(eq(workflowSteps.id, step_id));
+					await createNotification({
+						userId: doc.updated_by,
+						documentId: docId,
+						stepId: step_id,
+						title: 'เอกสารถูกปฏิเสธ',
+						message: `เอกสาร #${docId} ถูกปฏิเสธในขั้นตอน "${step?.step_name || ''}"${comment ? ` — ${comment}` : ''}`,
+						actionUrl: `/procurement/${docId}`,
+						notificationType: 'DOCUMENT_REJECTED'
+					});
+				}
 			}
 
 			return { success: true, message: action === 'APPROVED' ? 'อนุมัติสำเร็จ' : 'ปฏิเสธแล้ว' };

@@ -27,8 +27,8 @@ export const load: PageServerLoad = async ({ parent, url }) => {
   let agencyId = url.searchParams.get("agency_id");
   const orgUnitId = url.searchParams.get("org_unit_id");
 
-  // Director auto-scope: force to their own agency
-  if (user.is_director && user.agency_id) {
+  // Non-super-admin: auto-scope to their own agency (no scope selector)
+  if (!user.is_super_admin && user.agency_id) {
     agencyId = String(user.agency_id);
   }
 
@@ -59,7 +59,8 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 
   // Determine effective agency_id
   const effectiveAgencyId = agencyId ? parseInt(agencyId) : null;
-  const hasScopeSelected = user.is_director
+  // Non-super-admin always has scope auto-selected; super admin needs to pick
+  const hasScopeSelected = !user.is_super_admin
     ? true
     : !!(provinceId && agencyId);
 

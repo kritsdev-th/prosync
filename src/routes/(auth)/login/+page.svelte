@@ -105,24 +105,22 @@
 				}}
 			>
 				<div class="space-y-4">
-					<!-- ID Card Input -->
+					<!-- Identifier Input (ID Card / Email / Phone) -->
 					<div>
-						<label for="id_card" class="mb-1.5 block text-sm font-semibold" style="color: oklch(0.38 0.040 180);">
-							เลขบัตรประชาชน
+						<label for="identifier" class="mb-1.5 block text-sm font-semibold" style="color: oklch(0.38 0.040 180);">
+							เข้าสู่ระบบด้วย
 						</label>
 						<div class="relative">
 							<div class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
 								<svg class="h-5 w-5" style="color: oklch(0.70 0.025 180);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
 								</svg>
 							</div>
 							<input
 								type="text"
-								id="id_card"
-								name="id_card"
-								maxlength="13"
-								inputmode="numeric"
-								placeholder="กรอกเลขบัตรประชาชน 13 หลัก"
+								id="identifier"
+								name="identifier"
+								placeholder="เลขบัตรประชาชน, อีเมล หรือเบอร์โทร"
 								autocomplete="username"
 								class="block w-full rounded-xl border border-gray-200 bg-gray-50/80 pl-10 pr-4 py-2.5 text-sm
 									transition-all duration-200 ease-out-quart
@@ -132,12 +130,12 @@
 								required
 							/>
 						</div>
-						{#if form?.errors?.id_card}
+						{#if form?.errors?.identifier}
 							<p class="mt-1.5 flex items-center gap-1.5 text-xs" style="color: oklch(0.58 0.18 25);">
 								<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 								</svg>
-								{form.errors.id_card[0]}
+								{form.errors.identifier[0]}
 							</p>
 						{/if}
 					</div>

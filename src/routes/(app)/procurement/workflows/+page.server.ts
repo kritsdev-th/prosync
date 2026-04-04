@@ -1,39 +1,94 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import { workflows, workflowSteps, users } from '$lib/server/db/schema';
-import { eq, asc, and, isNull } from 'drizzle-orm';
+import { workflows, workflowSteps, users, agencies, provinces } from '$lib/server/db/schema';
+import { eq, asc, and, isNull, or } from 'drizzle-orm';
 import { buildUiSchema } from '$lib/types/workflow';
 import type { StepType } from '$lib/types/workflow';
 
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();
 
-	const workflowList = await db.select().from(workflows).orderBy(workflows.name);
-	const stepsList = await db.select().from(workflowSteps).orderBy(asc(workflowSteps.workflow_id), asc(workflowSteps.step_sequence));
+	// Central workflows (agency_id IS NULL) are always visible
+	// Agency-specific workflows are only visible to that agency's users
+	let workflowList;
+	if (user.is_super_admin) {
+		// Super admin sees all workflows
+		workflowList = await db.select().from(workflows).orderBy(workflows.agency_id, workflows.name);
+	} else if (user.agency_id) {
+		// Regular user sees central + their agency's workflows
+		workflowList = await db
+			.select()
+			.from(workflows)
+			.where(or(isNull(workflows.agency_id), eq(workflows.agency_id, user.agency_id)))
+			.orderBy(workflows.agency_id, workflows.name);
+	} else {
+		// No agency — only central
+		workflowList = await db.select().from(workflows).where(isNull(workflows.agency_id)).orderBy(workflows.name);
+	}
+
+	const workflowIds = workflowList.map((w) => w.id);
+	const stepsList =
+		workflowIds.length > 0
+			? await db
+					.select()
+					.from(workflowSteps)
+					.orderBy(asc(workflowSteps.workflow_id), asc(workflowSteps.step_sequence))
+			: [];
 
 	// Load users for approver selection (non-deleted, non-super-admin)
-	const userList = await db
-		.select({ id: users.id, name: users.name, position: users.position })
-		.from(users)
-		.where(and(isNull(users.deleted_at), eq(users.is_super_admin, false)));
+	// If regular user, filter to their agency
+	let userList: { id: number; name: string; position: string | null }[] = [];
+	if (user.is_super_admin) {
+		userList = await db
+			.select({ id: users.id, name: users.name, position: users.position })
+			.from(users)
+			.where(and(isNull(users.deleted_at), eq(users.is_super_admin, false)));
+	} else if (user.agency_id) {
+		userList = await db
+			.select({ id: users.id, name: users.name, position: users.position })
+			.from(users)
+			.where(and(isNull(users.deleted_at), eq(users.is_super_admin, false), eq(users.agency_id, user.agency_id)));
+	} else {
+		userList = [];
+	}
+
+	// Load agencies for super admin to assign workflows
+	let agencyList: { id: number; name: string }[] = [];
+	if (user.is_super_admin) {
+		agencyList = await db.select({ id: agencies.id, name: agencies.name }).from(agencies).orderBy(agencies.name);
+	}
 
 	return {
 		user,
 		workflows: workflowList,
 		steps: stepsList,
-		users: userList
+		users: userList,
+		agencies: agencyList
 	};
 };
 
 export const actions: Actions = {
-	createWorkflow: async ({ request }) => {
+	createWorkflow: async ({ request, locals }) => {
+		const user = locals.user;
 		const form = await request.formData();
 		const name = form.get('name')?.toString().trim();
 		if (!name) return fail(400, { error: 'กรุณากรอกชื่อวิธีจัดซื้อ' });
 
+		// Determine agency_id: super admin can create central (null) or for specific agency
+		// Regular user creates for their own agency
+		let agencyId: number | null = null;
+		if (user?.is_super_admin) {
+			const agencyRaw = form.get('agency_id')?.toString();
+			agencyId = agencyRaw ? Number(agencyRaw) : null; // null = central
+		} else if (user?.agency_id) {
+			agencyId = user.agency_id;
+		} else {
+			return fail(403, { error: 'ไม่มีสิทธิ์สร้างวิธีจัดซื้อ' });
+		}
+
 		try {
-			await db.insert(workflows).values({ name, total_steps: 0 });
+			await db.insert(workflows).values({ name, total_steps: 0, agency_id: agencyId });
 			return { success: true, message: 'สร้างวิธีจัดซื้อจัดจ้างสำเร็จ' };
 		} catch (err) {
 			console.error('Create workflow error:', err);
@@ -41,11 +96,22 @@ export const actions: Actions = {
 		}
 	},
 
-	updateWorkflow: async ({ request }) => {
+	updateWorkflow: async ({ request, locals }) => {
+		const user = locals.user;
 		const form = await request.formData();
 		const id = Number(form.get('id'));
 		const name = form.get('name')?.toString().trim();
 		if (!id || !name) return fail(400, { error: 'ข้อมูลไม่ครบ' });
+
+		// Check permission: central workflows only editable by super admin
+		const [wf] = await db.select({ agency_id: workflows.agency_id }).from(workflows).where(eq(workflows.id, id));
+		if (!wf) return fail(404, { error: 'ไม่พบวิธีจัดซื้อ' });
+		if (wf.agency_id === null && !user?.is_super_admin) {
+			return fail(403, { error: 'เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขวิธีจัดซื้อส่วนกลางได้' });
+		}
+		if (wf.agency_id !== null && !user?.is_super_admin && user?.agency_id !== wf.agency_id) {
+			return fail(403, { error: 'ไม่มีสิทธิ์แก้ไขวิธีจัดซื้อของหน่วยงานอื่น' });
+		}
 
 		try {
 			await db.update(workflows).set({ name }).where(eq(workflows.id, id));
@@ -56,10 +122,21 @@ export const actions: Actions = {
 		}
 	},
 
-	deleteWorkflow: async ({ request }) => {
+	deleteWorkflow: async ({ request, locals }) => {
+		const user = locals.user;
 		const form = await request.formData();
 		const id = Number(form.get('id'));
 		if (!id) return fail(400, { error: 'ไม่พบรหัส' });
+
+		// Check permission
+		const [wf] = await db.select({ agency_id: workflows.agency_id }).from(workflows).where(eq(workflows.id, id));
+		if (!wf) return fail(404, { error: 'ไม่พบวิธีจัดซื้อ' });
+		if (wf.agency_id === null && !user?.is_super_admin) {
+			return fail(403, { error: 'เฉพาะผู้ดูแลระบบเท่านั้นที่ลบวิธีจัดซื้อส่วนกลางได้' });
+		}
+		if (wf.agency_id !== null && !user?.is_super_admin && user?.agency_id !== wf.agency_id) {
+			return fail(403, { error: 'ไม่มีสิทธิ์ลบวิธีจัดซื้อของหน่วยงานอื่น' });
+		}
 
 		try {
 			await db.delete(workflowSteps).where(eq(workflowSteps.workflow_id, id));
@@ -71,7 +148,8 @@ export const actions: Actions = {
 		}
 	},
 
-	createStep: async ({ request }) => {
+	createStep: async ({ request, locals }) => {
+		const user = locals.user;
 		const form = await request.formData();
 		const workflowId = Number(form.get('workflow_id'));
 		const stepName = form.get('step_name')?.toString().trim();
@@ -79,17 +157,26 @@ export const actions: Actions = {
 		const isFinalStep = form.get('is_final_step') === 'true';
 		const configJson = form.get('template_config')?.toString() || '{}';
 		const insertAfterRaw = Number(form.get('insert_after') ?? '0');
-		const insertAfter = insertAfterRaw; // 0 = append, -1 = before first, N = after step N
+		const insertAfter = insertAfterRaw;
 
 		if (!workflowId || !stepName || !stepType) {
 			return fail(400, { error: 'กรุณากรอกข้อมูลให้ครบ' });
+		}
+
+		// Check permission on workflow
+		const [wf] = await db.select({ agency_id: workflows.agency_id }).from(workflows).where(eq(workflows.id, workflowId));
+		if (!wf) return fail(404, { error: 'ไม่พบวิธีจัดซื้อ' });
+		if (wf.agency_id === null && !user?.is_super_admin) {
+			return fail(403, { error: 'เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขวิธีจัดซื้อส่วนกลางได้' });
+		}
+		if (wf.agency_id !== null && !user?.is_super_admin && user?.agency_id !== wf.agency_id) {
+			return fail(403, { error: 'ไม่มีสิทธิ์แก้ไขวิธีจัดซื้อของหน่วยงานอื่น' });
 		}
 
 		try {
 			const config = JSON.parse(configJson);
 			const uiSchema = buildUiSchema(stepType, config);
 
-			// Get existing steps ordered
 			const existingSteps = await db
 				.select({ id: workflowSteps.id, seq: workflowSteps.step_sequence })
 				.from(workflowSteps)
@@ -99,13 +186,11 @@ export const actions: Actions = {
 			let newSeq: number;
 
 			if (insertAfter === -1) {
-				// Insert before first step — new step becomes 1, shift everything by +1
 				newSeq = 1;
 				for (const step of existingSteps) {
 					await db.update(workflowSteps).set({ step_sequence: step.seq + 1 }).where(eq(workflowSteps.id, step.id));
 				}
 			} else if (insertAfter > 0 && insertAfter <= existingSteps.length) {
-				// Insert after a specific step — shift all steps after insertAfter by +1
 				newSeq = insertAfter + 1;
 				for (const step of existingSteps) {
 					if (step.seq >= newSeq) {
@@ -113,13 +198,9 @@ export const actions: Actions = {
 					}
 				}
 			} else {
-				// Append at end
-				newSeq = existingSteps.length > 0
-					? Math.max(...existingSteps.map((s) => s.seq)) + 1
-					: 1;
+				newSeq = existingSteps.length > 0 ? Math.max(...existingSteps.map((s) => s.seq)) + 1 : 1;
 			}
 
-			// If final step, unset any existing final steps
 			if (isFinalStep) {
 				await db
 					.update(workflowSteps)
@@ -140,7 +221,6 @@ export const actions: Actions = {
 				is_final_step: isFinalStep
 			});
 
-			// Update total_steps count
 			const totalCount = existingSteps.length + 1;
 			await db.update(workflows).set({ total_steps: totalCount }).where(eq(workflows.id, workflowId));
 
@@ -151,18 +231,32 @@ export const actions: Actions = {
 		}
 	},
 
-	deleteStep: async ({ request }) => {
+	deleteStep: async ({ request, locals }) => {
+		const user = locals.user;
 		const form = await request.formData();
 		const id = Number(form.get('id'));
 		if (!id) return fail(400, { error: 'ไม่พบรหัส' });
 
 		try {
-			// Get the step's workflow_id before deleting
-			const [step] = await db.select({ workflow_id: workflowSteps.workflow_id }).from(workflowSteps).where(eq(workflowSteps.id, id));
+			const [step] = await db
+				.select({ workflow_id: workflowSteps.workflow_id })
+				.from(workflowSteps)
+				.where(eq(workflowSteps.id, id));
+
+			if (step) {
+				// Check permission on parent workflow
+				const [wf] = await db.select({ agency_id: workflows.agency_id }).from(workflows).where(eq(workflows.id, step.workflow_id));
+				if (wf?.agency_id === null && !user?.is_super_admin) {
+					return fail(403, { error: 'เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขวิธีจัดซื้อส่วนกลางได้' });
+				}
+				if (wf?.agency_id !== null && !user?.is_super_admin && user?.agency_id !== wf?.agency_id) {
+					return fail(403, { error: 'ไม่มีสิทธิ์แก้ไขวิธีจัดซื้อของหน่วยงานอื่น' });
+				}
+			}
+
 			await db.delete(workflowSteps).where(eq(workflowSteps.id, id));
 
 			if (step) {
-				// Re-sequence remaining steps
 				const remaining = await db
 					.select()
 					.from(workflowSteps)
@@ -170,10 +264,13 @@ export const actions: Actions = {
 					.orderBy(asc(workflowSteps.step_sequence));
 
 				for (let i = 0; i < remaining.length; i++) {
-					await db.update(workflowSteps).set({
-						step_sequence: i + 1,
-						is_final_step: i === remaining.length - 1
-					}).where(eq(workflowSteps.id, remaining[i].id));
+					await db
+						.update(workflowSteps)
+						.set({
+							step_sequence: i + 1,
+							is_final_step: i === remaining.length - 1
+						})
+						.where(eq(workflowSteps.id, remaining[i].id));
 				}
 
 				await db.update(workflows).set({ total_steps: remaining.length }).where(eq(workflows.id, step.workflow_id));

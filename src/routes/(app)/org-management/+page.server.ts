@@ -8,12 +8,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) throw redirect(303, '/login');
 	const { is_super_admin, is_director } = locals.user;
 
-	if (!is_super_admin && !is_director) {
-		throw redirect(303, '/dashboard');
-	}
-
-	// Director: only their own agency
-	if (is_director && !is_super_admin) {
+	// Non-super-admin: auto-scope to their own agency (view-only for non-director/non-admin)
+	if (!is_super_admin) {
 		const agencyId = locals.user.agency_id;
 		if (!agencyId) throw redirect(303, '/dashboard');
 
@@ -22,12 +18,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.from(agencies)
 			.where(eq(agencies.id, agencyId));
 
+		// canManage: only director or users with can_manage_users
+		const canManage = is_director || locals.user.permissions.can_manage_users;
+
 		return {
-			mode: 'director' as const,
+			mode: canManage ? 'director' as const : 'viewer' as const,
 			selectedAgencyId: agencyId,
 			agencyName: agency?.name ?? '',
 			provinces: [],
-			agencies: []
+			agencies: [],
+			canManage
 		};
 	}
 
@@ -61,6 +61,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		selectedAgencyId,
 		provinces: provinceList,
 		agencies: agencyList,
-		agencyName: null
+		agencyName: null,
+		canManage: true
 	};
 };

@@ -173,7 +173,8 @@ export const plans = pgTable('plans', {
 export const workflows = pgTable('workflows', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 100 }).notNull(),
-	total_steps: integer('total_steps').notNull()
+	total_steps: integer('total_steps').notNull(),
+	agency_id: integer('agency_id').references(() => agencies.id)
 });
 
 export const workflowSteps = pgTable('workflow_steps', {
@@ -186,7 +187,8 @@ export const workflowSteps = pgTable('workflow_steps', {
 	ui_schema: jsonb('ui_schema'),
 	required_pdfs: jsonb('required_pdfs'),
 	approver_role: varchar('approver_role', { length: 50 }),
-	is_final_step: boolean('is_final_step').notNull().default(false)
+	is_final_step: boolean('is_final_step').notNull().default(false),
+	step_assignees: jsonb('step_assignees')
 });
 
 export const vendors = pgTable('vendors', {
@@ -256,6 +258,41 @@ export const approvals = pgTable('approvals', {
 		.references(() => users.id),
 	action: varchar('action', { length: 20 }).notNull(), // APPROVED / REJECTED
 	comment: text('comment'),
+	created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+// ──────────────────────────────────────────────
+// Notifications & Task Assignments
+// ──────────────────────────────────────────────
+
+export const notifications = pgTable('notifications', {
+	id: serial('id').primaryKey(),
+	user_id: integer('user_id')
+		.notNull()
+		.references(() => users.id),
+	document_id: integer('document_id').references(() => documents.id),
+	step_id: integer('step_id').references(() => workflowSteps.id),
+	title: varchar('title', { length: 255 }).notNull(),
+	message: text('message').notNull(),
+	action_url: varchar('action_url', { length: 500 }),
+	notification_type: varchar('notification_type', { length: 50 }).notNull(),
+	is_read: boolean('is_read').notNull().default(false),
+	created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+export const documentStepAssignments = pgTable('document_step_assignments', {
+	id: serial('id').primaryKey(),
+	document_id: integer('document_id')
+		.notNull()
+		.references(() => documents.id),
+	step_id: integer('step_id')
+		.notNull()
+		.references(() => workflowSteps.id),
+	user_id: integer('user_id')
+		.notNull()
+		.references(() => users.id),
+	assignment_type: varchar('assignment_type', { length: 50 }).notNull(),
+	is_completed: boolean('is_completed').notNull().default(false),
 	created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 });
 

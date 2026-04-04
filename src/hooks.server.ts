@@ -13,6 +13,7 @@ async function buildJWTPayload(userId: number): Promise<JWTPayload | null> {
 			id: users.id,
 			id_card: users.id_card,
 			name: users.name,
+			position_rank: users.position_rank,
 			agency_id: users.agency_id,
 			is_super_admin: users.is_super_admin,
 			profile_completed: users.profile_completed
@@ -28,7 +29,11 @@ async function buildJWTPayload(userId: number): Promise<JWTPayload | null> {
 		can_manage_plans: false,
 		can_manage_procurement: false,
 		can_manage_finance: false,
-		can_view_audit_trail: false
+		can_view_audit_trail: false,
+		can_view_plans: false,
+		can_view_procurement: false,
+		can_view_finance: false,
+		can_view_dashboard: false
 	};
 
 	let isDirector = false;
@@ -67,6 +72,7 @@ async function buildJWTPayload(userId: number): Promise<JWTPayload | null> {
 		sub: user.id,
 		id_card: user.id_card,
 		name: user.name,
+		position_rank: user.position_rank ?? null,
 		agency_id: user.agency_id,
 		is_super_admin: user.is_super_admin,
 		is_director: isDirector,
@@ -138,37 +144,55 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (event.locals.user && !event.locals.user.is_super_admin) {
 		const path = event.url.pathname;
 		const perms = event.locals.user.permissions;
+		const isDir = event.locals.user.is_director ?? false;
 
-		if (path.startsWith('/planning') && !perms.can_manage_plans) {
-			throw redirect(303, '/dashboard');
+		// Determine fallback page: if user can't see dashboard, go to procurement/tasks or org-management
+		const fallback = perms.can_view_dashboard ? '/dashboard'
+			: perms.can_view_procurement ? '/procurement/tasks'
+			: perms.can_view_finance ? '/finance'
+			: '/org-management';
+
+		// /dashboard: only ผอ., รองผอ., and roles with can_view_dashboard
+		if (path.startsWith('/dashboard') && !perms.can_view_dashboard && !isDir) {
+			throw redirect(303, fallback);
 		}
-		if (path.startsWith('/procurement') && !perms.can_manage_procurement) {
-			throw redirect(303, '/dashboard');
+
+		// /planning: view-only access (can_view_plans) or manage access
+		if (path.startsWith('/planning') && !perms.can_view_plans && !perms.can_manage_plans) {
+			throw redirect(303, fallback);
 		}
-		if (path.startsWith('/finance') && !perms.can_manage_finance) {
-			throw redirect(303, '/dashboard');
+
+		// /procurement: view-only (can_view_procurement) or manage access
+		if (path.startsWith('/procurement') && !perms.can_view_procurement && !perms.can_manage_procurement) {
+			throw redirect(303, fallback);
 		}
+
+		// /finance: view-only (can_view_finance) or manage access
+		if (path.startsWith('/finance') && !perms.can_view_finance && !perms.can_manage_finance) {
+			throw redirect(303, fallback);
+		}
+
 		if (path.startsWith('/audit') && !perms.can_view_audit_trail) {
-			throw redirect(303, '/dashboard');
+			throw redirect(303, fallback);
 		}
-		// /admin/users, /admin/roles, /admin/org-structure: super admin OR director OR can_manage_users
+
+		// /admin/users, /admin/roles: super admin OR director OR can_manage_users
 		if (
-			(path.startsWith('/admin/users') || path.startsWith('/admin/roles') || path.startsWith('/admin/org-structure')) &&
-			!perms.can_manage_users && !(event.locals.user.is_director ?? false)
+			(path.startsWith('/admin/users') || path.startsWith('/admin/roles')) &&
+			!perms.can_manage_users && !isDir
 		) {
-			throw redirect(303, '/dashboard');
+			throw redirect(303, fallback);
 		}
+		// /admin/org-structure: open to ALL authenticated users (view-only for non-managers)
 		// /admin landing, /admin/provinces, /admin/agencies, /admin/median-prices: super admin only
 		if (
 			(path === '/admin' || path.startsWith('/admin/provinces') || path.startsWith('/admin/agencies') || path.startsWith('/admin/median-prices')) &&
 			!event.locals.user.is_super_admin
 		) {
-			throw redirect(303, '/dashboard');
+			throw redirect(303, fallback);
 		}
-		// /org-management: super admin OR director
-		if (path.startsWith('/org-management') && !(event.locals.user.is_director ?? false)) {
-			throw redirect(303, '/dashboard');
-		}
+		// /org-management: all roles can VIEW (read-only enforced on page level)
+		// No redirect needed — page-level logic handles edit restrictions
 	}
 
 	return resolve(event);

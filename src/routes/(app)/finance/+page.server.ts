@@ -102,11 +102,15 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 			.where(eq(taxTransactions.agency_id, agencyId));
 	}
 
+	// Load bank list for account creation dropdown
+	const bankList = await db.select({ id: bank.id, name: bank.name, bank_code: bank.bank_code }).from(bank);
+
 	return {
 		user,
 		dikaVouchers: dikaList,
 		bankAccounts: accountList,
 		taxTransactions: taxList,
+		banks: bankList,
 		provinces: provincesList,
 		agencies: agencyList,
 		selectedProvinceId,

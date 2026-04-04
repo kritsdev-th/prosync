@@ -1,11 +1,37 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 
-	// hub page — no data needed
+	let { data } = $props();
+	let pendingCount = $derived((data as any).pendingTaskCount ?? 0);
 </script>
 
 <div>
 	<PageHeader title="จัดซื้อจัดจ้าง" subtitle="จัดการวิธีการจัดซื้อจัดจ้างและทำเอกสาร" />
+
+	<!-- My Tasks Quick Access -->
+	<a href="/procurement/tasks" class="tasks-banner">
+		<div class="tasks-icon">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+			</svg>
+		</div>
+		<div class="tasks-info">
+			<h3 class="tasks-title">งานของฉัน</h3>
+			<p class="tasks-desc">
+				{#if pendingCount > 0}
+					คุณมี <strong>{pendingCount}</strong> งานที่รอดำเนินการ
+				{:else}
+					ไม่มีงานที่ต้องดำเนินการในขณะนี้
+				{/if}
+			</p>
+		</div>
+		{#if pendingCount > 0}
+			<span class="tasks-badge">{pendingCount}</span>
+		{/if}
+		<svg class="card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+		</svg>
+	</a>
 
 	<div class="card-grid">
 		<a href="/procurement/workflows" class="nav-card">
@@ -52,6 +78,7 @@
 		transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
 	}
 	.nav-card:nth-child(2) { animation-delay: 0.08s; }
+	.nav-card:nth-child(3) { animation-delay: 0.16s; }
 	.nav-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px oklch(0.52 0.14 240 / 0.1); border-color: oklch(0.52 0.14 240 / 0.2); }
 
 	.card-icon-wrap { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -63,6 +90,34 @@
 	.nav-card:hover .card-arrow { transform: translateX(4px); color: oklch(0.52 0.14 240); }
 
 	@keyframes card-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+	/* Tasks Banner */
+	.tasks-banner {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		padding: 18px 24px;
+		margin-bottom: 18px;
+		border-radius: 14px;
+		background: linear-gradient(135deg, oklch(0.52 0.14 240 / 0.06), oklch(0.54 0.16 150 / 0.04));
+		border: 1px solid oklch(0.52 0.14 240 / 0.12);
+		text-decoration: none;
+		transition: border-color 0.2s ease, box-shadow 0.2s ease;
+		animation: card-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+	}
+	.tasks-banner:hover { border-color: oklch(0.52 0.14 240 / 0.25); box-shadow: 0 4px 16px oklch(0.52 0.14 240 / 0.08); }
+	.tasks-icon { width: 40px; height: 40px; border-radius: 10px; background: oklch(0.52 0.14 240 / 0.1); color: oklch(0.52 0.14 240); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+	.tasks-icon svg { width: 22px; height: 22px; }
+	.tasks-info { flex: 1; }
+	.tasks-title { margin: 0 0 2px 0; font-size: 0.9375rem; font-weight: 600; color: oklch(0.25 0.02 180); }
+	.tasks-desc { margin: 0; font-size: 0.8125rem; color: oklch(0.5 0.02 180); }
+	.tasks-desc strong { color: oklch(0.52 0.14 240); }
+	.tasks-badge {
+		min-width: 24px; height: 24px; padding: 0 6px;
+		border-radius: 12px; background: oklch(0.58 0.2 25);
+		color: white; font-size: 0.75rem; font-weight: 700;
+		display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+	}
 
 	@media (max-width: 768px) { .card-grid { grid-template-columns: 1fr; } }
 </style>
