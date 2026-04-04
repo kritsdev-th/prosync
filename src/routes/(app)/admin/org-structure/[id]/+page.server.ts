@@ -4,7 +4,7 @@ import { db } from '$lib/server/db';
 import { orgUnits, users, userAssignments, roles } from '$lib/server/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
 	const unitId = Number(params.id);
 	if (!unitId || isNaN(unitId)) throw error(404, 'ไม่พบแผนก');
 
@@ -52,5 +52,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		parentName = parent?.name ?? null;
 	}
 
-	return { unit, members, parentName };
+	const canManage = locals.user?.is_super_admin || locals.user?.is_director || locals.user?.permissions.can_manage_users || false;
+
+	return { unit, members, parentName, canManage };
 };

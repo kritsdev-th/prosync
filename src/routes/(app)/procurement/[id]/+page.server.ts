@@ -14,7 +14,7 @@ import {
 	users,
 	bankAccounts
 } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import { writeAuditLog } from '$lib/server/db/audit';
 import {
 	addCommitteeSchema,
@@ -108,6 +108,27 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 
 	const currentStep = steps.find((s) => s.id === doc.current_step_id);
 
+	// Check if current user is assigned to the current step
+	let isAssignedToCurrentStep = false;
+	if (currentStep && user) {
+		const { documentStepAssignments } = await import('$lib/server/db/schema');
+		const [assignment] = await db
+			.select({ id: documentStepAssignments.id })
+			.from(documentStepAssignments)
+			.where(and(
+				eq(documentStepAssignments.document_id, docId),
+				eq(documentStepAssignments.step_id, currentStep.id),
+				eq(documentStepAssignments.user_id, user.sub),
+				eq(documentStepAssignments.is_completed, false)
+			))
+			.limit(1);
+		isAssignedToCurrentStep = !!assignment;
+	}
+
+	// Super admin and document creator can always act
+	const isCreator = doc.updated_by === user.sub;
+	const canActOnStep = user.is_super_admin || isAssignedToCurrentStep || isCreator;
+
 	return {
 		user,
 		document: doc,
@@ -120,7 +141,8 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		approvals: approvalList,
 		vendors: vendorList,
 		users: userList,
-		bankAccounts: accounts
+		bankAccounts: accounts,
+		canActOnStep
 	};
 };
 
@@ -135,6 +157,29 @@ export const actions: Actions = {
 			parsedData = stepData ? JSON.parse(stepData) as Record<string, unknown> : {};
 		} catch {
 			return fail(400, { success: false, errors: { step: ['ข้อมูลขั้นตอนไม่ถูกต้อง'] } });
+		}
+
+		// Handle file upload
+		const pdfFile = form.get('pdf_file') as File | null;
+		if (pdfFile && pdfFile.size > 0) {
+			const { writeFileSync, mkdirSync, existsSync } = await import('fs');
+			const { join } = await import('path');
+
+			// Path pattern: /uploads/procurement/{agency_id}/{doc_id}/step_{seq}_{timestamp}.pdf
+			const uploadDir = join('static', 'uploads', 'procurement', String(form.get('agency_id') || '0'), String(docId));
+			if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
+
+			const timestamp = Date.now();
+			const filename = `step_${form.get('step_seq') || '0'}_${timestamp}.pdf`;
+			const filePath = join(uploadDir, filename);
+			const publicPath = `/uploads/procurement/${form.get('agency_id') || '0'}/${docId}/${filename}`;
+
+			const buffer = Buffer.from(await pdfFile.arrayBuffer());
+			writeFileSync(filePath, buffer);
+
+			parsedData.uploaded_pdf = publicPath;
+			parsedData.uploaded_filename = pdfFile.name;
+			parsedData.uploaded_at = new Date().toISOString();
 		}
 
 		try {
@@ -190,7 +235,7 @@ export const actions: Actions = {
 
 				// Assign and notify users for the next step
 				if (nextStep && !isFinalStep) {
-					await assignAndNotify(docId, nextStep.id, doc.agency_id, nextStep.step_name);
+					await assignAndNotify(docId, nextStep.id, doc.agency_id, nextStep.step_name, locals.user?.sub);
 				}
 			}
 
@@ -220,6 +265,20 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error('Add committee error:', err);
 			return fail(500, { success: false, errors: { user_id: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
+	},
+
+	removeCommittee: async ({ request }) => {
+		const form = await request.formData();
+		const id = Number(form.get('committee_id'));
+		if (!id) return fail(400, { success: false, errors: { committee_id: ['ไม่พบรหัสกรรมการ'] } });
+
+		try {
+			await db.delete(documentCommittees).where(eq(documentCommittees.id, id));
+			return { success: true, message: 'ลบกรรมการสำเร็จ' };
+		} catch (err) {
+			console.error('Remove committee error:', err);
+			return fail(500, { success: false, errors: { committee_id: ['เกิดข้อผิดพลาด'] } });
 		}
 	},
 
@@ -274,6 +333,27 @@ export const actions: Actions = {
 			const docId = Number(params.id);
 			const { step_id, action, comment } = parsed.data;
 
+			// Prevent double-approve: check if this user already approved this step
+			const existingApproval = await db
+				.select({ id: approvals.id })
+				.from(approvals)
+				.where(and(
+					eq(approvals.document_id, docId),
+					eq(approvals.step_id, step_id),
+					eq(approvals.user_id, locals.user!.sub)
+				))
+				.limit(1);
+
+			if (existingApproval.length > 0) {
+				return fail(400, { success: false, errors: { step_id: ['คุณได้อนุมัติ/ปฏิเสธขั้นตอนนี้ไปแล้ว'] } });
+			}
+
+			// Verify document is still at this step
+			const [doc] = await db.select().from(documents).where(eq(documents.id, docId));
+			if (!doc || doc.current_step_id !== step_id) {
+				return fail(400, { success: false, errors: { step_id: ['ขั้นตอนนี้ไม่ใช่ขั้นตอนปัจจุบันแล้ว'] } });
+			}
+
 			await db.insert(approvals).values({
 				document_id: docId,
 				step_id,
@@ -291,8 +371,7 @@ export const actions: Actions = {
 				await db.update(documents).set({ status: 'REJECTED' }).where(eq(documents.id, docId));
 
 				// Notify document creator of rejection
-				const [doc] = await db.select({ updated_by: documents.updated_by }).from(documents).where(eq(documents.id, docId));
-				if (doc?.updated_by) {
+				if (doc.updated_by) {
 					const [step] = await db.select({ step_name: workflowSteps.step_name }).from(workflowSteps).where(eq(workflowSteps.id, step_id));
 					await createNotification({
 						userId: doc.updated_by,
@@ -304,9 +383,44 @@ export const actions: Actions = {
 						notificationType: 'DOCUMENT_REJECTED'
 					});
 				}
+			} else {
+				// APPROVED: auto-advance to next step
+				const steps = await db
+					.select()
+					.from(workflowSteps)
+					.where(eq(workflowSteps.workflow_id, doc.workflow_id))
+					.orderBy(workflowSteps.step_sequence);
+
+				const currentStep = steps.find((s) => s.id === step_id);
+				if (currentStep) {
+					const nextStep = steps.find((s) => s.step_sequence === currentStep.step_sequence + 1);
+					const isFinalStep = currentStep.is_final_step;
+
+					// Store approval data in payload
+					const stepKey = `step_${currentStep.step_sequence}_${currentStep.step_name.replace(/\s+/g, '_').substring(0, 30)}`;
+					const updatedPayload = {
+						...(doc.payload as Record<string, unknown>),
+						[stepKey]: { approved: true, approved_by: locals.user!.sub, approved_by_name: locals.user!.name, approved_at: new Date().toISOString(), comment: comment ?? null }
+					};
+
+					await db
+						.update(documents)
+						.set({
+							payload: updatedPayload,
+							current_step_id: nextStep?.id || doc.current_step_id,
+							status: isFinalStep ? 'APPROVED_PROCUREMENT' : 'IN_PROGRESS',
+							updated_by: doc.updated_by
+						})
+						.where(eq(documents.id, docId));
+
+					// Assign and notify users for the next step
+					if (nextStep && !isFinalStep) {
+						await assignAndNotify(docId, nextStep.id, doc.agency_id, nextStep.step_name, locals.user?.sub);
+					}
+				}
 			}
 
-			return { success: true, message: action === 'APPROVED' ? 'อนุมัติสำเร็จ' : 'ปฏิเสธแล้ว' };
+			return { success: true, message: action === 'APPROVED' ? 'อนุมัติสำเร็จ — ส่งต่อขั้นตอนถัดไปแล้ว' : 'ปฏิเสธแล้ว' };
 		} catch (err) {
 			console.error('Approve error:', err);
 			return fail(500, { success: false, errors: { step_id: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });

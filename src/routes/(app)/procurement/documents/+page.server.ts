@@ -114,7 +114,7 @@ export const actions: Actions = {
 				.from(workflowSteps)
 				.where(and(eq(workflowSteps.workflow_id, workflow_id), eq(workflowSteps.step_sequence, 1)));
 
-			await db.insert(documents).values({
+			const [newDoc] = await db.insert(documents).values({
 				agency_id,
 				workflow_id,
 				plan_id,
@@ -122,7 +122,13 @@ export const actions: Actions = {
 				payload: {},
 				status: 'IN_PROGRESS',
 				updated_by: locals.user?.sub || null
-			});
+			}).returning();
+
+			// Auto-assign step 1 to the creator and notify them
+			if (firstStep && locals.user?.sub && newDoc) {
+				const { assignAndNotify } = await import('$lib/server/step-assignments');
+				await assignAndNotify(newDoc.id, firstStep.id, agency_id, firstStep.step_name);
+			}
 
 			return { success: true, message: 'สร้างเอกสารจัดซื้อจัดจ้างสำเร็จ' };
 		} catch (err) {

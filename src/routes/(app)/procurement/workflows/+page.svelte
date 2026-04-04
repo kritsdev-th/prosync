@@ -30,6 +30,10 @@
 
 	let isSuperAdmin = $derived(data.user.is_super_admin);
 	let userAgencyId = $derived(data.user.agency_id);
+	// Only director, procurement head (can_manage_procurement + can approve), and super admin can create workflows
+	let canCreateWorkflow = $derived(
+		isSuperAdmin || data.user.is_director || data.user.permissions.can_manage_procurement
+	);
 
 	// Split workflows into central and agency-specific
 	let centralWorkflows = $derived(data.workflows.filter((w: any) => w.agency_id === null));
@@ -181,10 +185,12 @@
 				<span class="item-count">{data.workflows.length} วิธี</span>
 			</p>
 		</div>
-		<button onclick={() => { createForAgencyId = ''; showCreateWfModal = true; }} class="btn-primary">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-			เพิ่มวิธีจัดซื้อ
-		</button>
+		{#if canCreateWorkflow}
+			<button onclick={() => { createForAgencyId = ''; showCreateWfModal = true; }} class="btn-primary">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+				เพิ่มวิธีจัดซื้อ
+			</button>
+		{/if}
 	</div>
 
 	{#if formResult?.message}

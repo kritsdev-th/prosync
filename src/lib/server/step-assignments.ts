@@ -43,15 +43,24 @@ export async function resolveAssignees(
 						}
 					}
 				} else if (def.value === 'REVIEWER') {
-					// Find head of procurement/supply department for this agency
+					// Find the head of the procurement/supply department (พัสดุ)
 					const procUnits = await db
-						.select({ head_of_unit_id: orgUnits.head_of_unit_id })
+						.select({ head_of_unit_id: orgUnits.head_of_unit_id, name: orgUnits.name })
 						.from(orgUnits)
-						.where(and(eq(orgUnits.agency_id, agencyId)))
-						.then((units) => units.filter((u) => u.head_of_unit_id));
-					// Use first department head found as reviewer
-					if (procUnits.length > 0 && procUnits[0].head_of_unit_id) {
-						assignees.push({ userId: procUnits[0].head_of_unit_id, type: 'APPROVER' });
+						.where(and(eq(orgUnits.agency_id, agencyId)));
+
+					// Try to find procurement-specific unit head first
+					const procUnit = procUnits.find((u) =>
+						u.head_of_unit_id && (u.name.includes('พัสดุ') || u.name.includes('จัดซื้อ'))
+					);
+					if (procUnit?.head_of_unit_id) {
+						assignees.push({ userId: procUnit.head_of_unit_id, type: 'APPROVER' });
+					} else {
+						// Fallback: find any non-root department head
+						const deptHead = procUnits.find((u) => u.head_of_unit_id);
+						if (deptHead?.head_of_unit_id) {
+							assignees.push({ userId: deptHead.head_of_unit_id, type: 'APPROVER' });
+						}
 					}
 				}
 				break;
@@ -134,7 +143,8 @@ export async function assignAndNotify(
 	documentId: number,
 	stepId: number,
 	agencyId: number,
-	stepName: string
+	stepName: string,
+	advancedByUserId?: number
 ) {
 	// Get step details
 	const [step] = await db
@@ -173,21 +183,27 @@ export async function assignAndNotify(
 				? 'รอแต่งตั้งกรรมการ'
 				: 'รอดำเนินการ';
 
-	// Create notifications
-	await createBulkNotifications(
-		assignees.map((a) => ({
-			userId: a.userId,
-			documentId,
-			stepId,
-			title: `งานใหม่: ${stepName}`,
-			message: `คุณมีงานที่ต้องดำเนินการในขั้นตอน "${stepName}" — ${actionLabel}`,
-			actionUrl: `/procurement/${documentId}`,
-			notificationType: notifType
-		}))
-	);
+	// Create notifications (skip the user who just advanced — they already know)
+	const notifyAssignees = advancedByUserId
+		? assignees.filter((a) => a.userId !== advancedByUserId)
+		: assignees;
 
-	// Send emails
-	for (const a of assignees) {
+	if (notifyAssignees.length > 0) {
+		await createBulkNotifications(
+			notifyAssignees.map((a) => ({
+				userId: a.userId,
+				documentId,
+				stepId,
+				title: `งานใหม่: ${stepName}`,
+				message: `คุณมีงานที่ต้องดำเนินการในขั้นตอน "${stepName}" — ${actionLabel}`,
+				actionUrl: `/procurement/${documentId}`,
+				notificationType: notifType
+			}))
+		);
+	}
+
+	// Send emails (skip advancing user)
+	for (const a of notifyAssignees) {
 		const [user] = await db
 			.select({ name: users.name, email: users.email })
 			.from(users)
@@ -213,6 +229,7 @@ export async function assignAndNotify(
  * Mark a user's assignment as completed for a given document + step.
  */
 export async function completeAssignment(documentId: number, stepId: number, userId: number) {
+	// Mark assignment as completed
 	await db
 		.update(documentStepAssignments)
 		.set({ is_completed: true })
@@ -221,6 +238,20 @@ export async function completeAssignment(documentId: number, stepId: number, use
 				eq(documentStepAssignments.document_id, documentId),
 				eq(documentStepAssignments.step_id, stepId),
 				eq(documentStepAssignments.user_id, userId)
+			)
+		);
+
+	// Also mark related notifications as read
+	const { notifications } = await import('$lib/server/db/schema');
+	await db
+		.update(notifications)
+		.set({ is_read: true })
+		.where(
+			and(
+				eq(notifications.user_id, userId),
+				eq(notifications.document_id, documentId),
+				eq(notifications.step_id, stepId),
+				eq(notifications.is_read, false)
 			)
 		);
 }

@@ -5,3 +5,7 @@ build
 .env.*
 .DS_Store
 dist
+
+# Uploaded files (keep directory structure, ignore content)
+static/uploads/procurement/**
+!static/uploads/procurement/.gitkeep

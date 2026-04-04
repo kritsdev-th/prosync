@@ -18,37 +18,42 @@
 	});
 </script>
 
-<a href={resolvedHref} class="back-btn">
-	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-		<path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+<a href={resolvedHref} class="back-link">
+	<svg class="back-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+		<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
 	</svg>
-	{label}
+	<span>{label}</span>
 </a>
 
 <style>
-	.back-btn {
+	.back-link {
 		display: inline-flex;
 		align-items: center;
-		gap: 8px;
-		padding: 8px 16px;
-		border-radius: 10px;
-		font-size: 0.875rem;
+		gap: 6px;
+		padding: 6px 14px 6px 8px;
+		border-radius: 8px;
+		font-size: 0.8125rem;
 		font-weight: 500;
-		color: oklch(0.4 0.02 180);
-		background: oklch(0.97 0.005 180);
-		border: 1px solid oklch(0.9 0.005 180);
-		text-decoration: none;
-		transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
-	}
-
-	.back-btn:hover {
-		background: oklch(0.52 0.14 240 / 0.08);
 		color: oklch(0.52 0.14 240);
-		transform: translateX(-2px);
+		background: transparent;
+		text-decoration: none;
+		transition: background 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+		margin-bottom: 8px;
 	}
 
-	.back-btn svg {
-		width: 16px;
-		height: 16px;
+	.back-link:hover {
+		background: oklch(0.52 0.14 240 / 0.06);
+		transform: translateX(-3px);
+	}
+
+	.back-arrow {
+		width: 18px;
+		height: 18px;
+		flex-shrink: 0;
+		transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.back-link:hover .back-arrow {
+		transform: translateX(-2px);
 	}
 </style>

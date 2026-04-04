@@ -45,9 +45,11 @@
 		{#if data.members.length === 0}
 			<div class="mt-4 rounded-xl p-8 text-center" style="background: var(--color-slate-50); border: 1px solid var(--color-slate-100)">
 				<p class="text-sm" style="color: var(--color-slate-400)">ยังไม่มีสมาชิกในแผนกนี้</p>
-				<p class="mt-1 text-[0.75rem]" style="color: var(--color-slate-400)">มอบหมายบทบาทให้ผู้ใช้ในหน้า
-					<a href="/admin/users" class="underline" style="color: var(--color-brand-600)">จัดการผู้ใช้งาน</a>
-				</p>
+				{#if (data as any).canManage}
+					<p class="mt-1 text-[0.75rem]" style="color: var(--color-slate-400)">มอบหมายบทบาทให้ผู้ใช้ในหน้า
+						<a href="/admin/users" class="underline" style="color: var(--color-brand-600)">จัดการผู้ใช้งาน</a>
+					</p>
+				{/if}
 			</div>
 		{:else}
 			<div class="mt-3 overflow-hidden rounded-xl" style="border: 1px solid var(--color-slate-100); background: white">

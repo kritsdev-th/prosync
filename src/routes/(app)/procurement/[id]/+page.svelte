@@ -1,9 +1,30 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import BackButton from '$lib/components/BackButton.svelte';
 	import { formatThaiDateTime, formatBaht, formatNumber } from '$lib/utils/format';
+	import { goto } from '$app/navigation';
 
 	let { data, form: formResult } = $props();
+
+	// After successful step advance or approval, redirect if user can't act on next step
+	function handleStepComplete() {
+		return async ({ result, update }: any) => {
+			if (result.type === 'success') {
+				// Redirect to tasks page since the step has moved on
+				window.location.href = '/procurement/tasks';
+				return;
+			}
+			await update();
+		};
+	}
+
+	// Check if current user already approved/rejected this step
+	let hasAlreadyApproved = $derived(
+		data.currentStep
+			? data.approvals.some((a: any) => a.step_id === data.currentStep?.id && a.user_name === data.user.name)
+			: false
+	);
 
 	function getStepStatus(step: any): 'completed' | 'current' | 'rejected' | 'upcoming' | 'disabled' {
 		const isRejected = data.document.status === 'REJECTED';
@@ -45,7 +66,7 @@
 
 <div>
 	<div class="mb-6">
-		<a href="/procurement" class="text-sm text-blue-600 hover:underline">← กลับไปรายการเอกสาร</a>
+		<BackButton href="/procurement/tasks" label="กลับหน้างานที่รอดำเนินการ" />
 		<h1 style="margin: 8px 0 4px 0; font-size: clamp(1.375rem, 1.1rem + 0.7vw, 1.625rem); font-weight: 700; color: oklch(0.2 0.02 180);">เอกสาร #{data.document.id}</h1>
 		<p class="text-sm text-gray-500">
 			{data.workflow.name} | แผน: {data.plan.title}
@@ -99,7 +120,13 @@
 				ขั้นตอนที่ {data.currentStep.step_sequence}: {data.currentStep.step_name}
 			</h2>
 
-			{#if uiSchema?.components}
+			{#if !data.canActOnStep}
+				<div class="mt-4 rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-700">
+					ขั้นตอนนี้รอผู้ที่มีสิทธิ์ดำเนินการ — คุณสามารถดูสถานะได้แต่ไม่สามารถดำเนินการในขั้นนี้ได้
+				</div>
+			{/if}
+
+			{#if uiSchema?.components && data.canActOnStep}
 				<div class="mt-4 space-y-4">
 					{#each uiSchema.components as comp}
 						{@const compType = typeof comp === 'string' ? comp : comp.type}
@@ -107,15 +134,21 @@
 						{#if compType === 'budget_input'}
 							<div>
 								<label for="budget_amount" class="block text-sm font-medium text-gray-700">วงเงินงบประมาณ (บาท)</label>
-								<input type="number" step="0.01" id="budget_amount" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+								<input type="number" step="0.01" id="budget_amount" value={data.plan.estimated_amount} readonly class="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600" />
+								<p class="mt-1 text-xs text-gray-400">อิงจากงบประมาณคาดการณ์ในแผนงาน "{data.plan.title}"</p>
 							</div>
 						{/if}
 
 						{#if compType === 'single_pdf_uploader' || compType === 'multi_pdf_uploader'}
-							<div>
-								<label class="block text-sm font-medium text-gray-700">อัปโหลดไฟล์ PDF</label>
-								<input type="file" accept=".pdf" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-								<p class="mt-1 text-xs text-gray-400">รองรับไฟล์ PDF สูงสุด 20MB</p>
+							<div class="pdf-upload-box">
+								<label class="block text-sm font-medium text-gray-700">
+									อัปโหลดไฟล์ PDF
+									{#if uiSchema?.required_pdfs?.length}
+										<span class="text-xs text-gray-400 ml-1">({uiSchema.required_pdfs.join(', ')})</span>
+									{/if}
+								</label>
+								<input type="file" name="pdf_file" accept=".pdf" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1 file:text-xs file:text-blue-600" />
+								<p class="mt-1 text-xs text-gray-400">รองรับไฟล์ PDF สูงสุด 20MB — ไฟล์จะถูกบันทึกเข้าระบบ</p>
 							</div>
 						{/if}
 
@@ -129,6 +162,13 @@
 									<div class="mt-2 flex items-center gap-2 text-sm">
 										<span class="font-medium">{member.user_name}</span>
 										<span class="text-gray-500">({member.role_in_committee})</span>
+										<form method="POST" action="?/removeCommittee" use:enhance class="inline">
+											<input type="hidden" name="committee_id" value={member.id} />
+											<button type="submit" class="ml-1 rounded p-0.5 text-red-400 hover:bg-red-50 hover:text-red-600" title="ลบ"
+												onclick={(e) => { if (!confirm(`ลบ "${member.user_name}" ออกจากคณะกรรมการ?`)) e.preventDefault(); }}>
+												<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+											</button>
+										</form>
 									</div>
 								{/each}
 								<form method="POST" action="?/addCommittee" use:enhance class="mt-3 flex gap-2">
@@ -222,17 +262,37 @@
 										<p class="mt-1 font-medium text-green-700">ผู้ชนะ: {winner.vendor_name} ({formatBaht(winner.proposed_price || 0)})</p>
 									{/each}
 								</div>
-								<form method="POST" action="?/approve" use:enhance class="mt-4 space-y-3">
-									<input type="hidden" name="step_id" value={data.currentStep?.id} />
-									<div>
-										<label for="approval-comment" class="block text-sm font-medium text-gray-700">หมายเหตุ</label>
-										<textarea id="approval-comment" name="comment" placeholder="หมายเหตุ (บังคับเมื่อปฏิเสธ)" rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+								<!-- Show uploaded documents from previous steps for review -->
+								{#each [Object.entries((data.document.payload as Record<string, any>) || {}).filter(([, v]) => v?.uploaded_pdf)] as prevDocs}
+								{#if prevDocs.length > 0}
+									<div class="mt-3 rounded-lg bg-gray-50 p-3">
+										<p class="text-xs font-medium text-gray-500 mb-2">เอกสารประกอบจากขั้นตอนก่อนหน้า:</p>
+										{#each prevDocs as [key, val]}
+											<a href={val.uploaded_pdf} target="_blank" class="flex items-center gap-2 text-sm text-blue-600 hover:underline mb-1">
+												<svg class="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+												{val.uploaded_filename || key.replace(/^step_\d+_/, '')}
+											</a>
+										{/each}
 									</div>
-									<div class="flex gap-2">
-										<button type="submit" name="action" value="APPROVED" class="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">อนุมัติ</button>
-										<button type="submit" name="action" value="REJECTED" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">ปฏิเสธ</button>
+								{/if}
+								{/each}
+								{#if hasAlreadyApproved}
+									<div class="mt-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700">
+										คุณได้อนุมัติ/ตรวจสอบขั้นตอนนี้ไปแล้ว
 									</div>
-								</form>
+								{:else}
+									<form method="POST" action="?/approve" use:enhance={handleStepComplete} class="mt-4 space-y-3">
+										<input type="hidden" name="step_id" value={data.currentStep?.id} />
+										<div>
+											<label for="approval-comment" class="block text-sm font-medium text-gray-700">หมายเหตุ</label>
+											<textarea id="approval-comment" name="comment" placeholder="หมายเหตุ (บังคับเมื่อปฏิเสธ)" rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+										</div>
+										<div class="flex gap-2">
+											<button type="submit" name="action" value="APPROVED" class="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">อนุมัติ</button>
+											<button type="submit" name="action" value="REJECTED" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">ปฏิเสธ</button>
+										</div>
+									</form>
+								{/if}
 							</div>
 						{/if}
 
@@ -324,9 +384,23 @@
 						const t = typeof c === 'string' ? c : c.type;
 						return ['approval_summary', 'send_to_finance_button'].includes(t);
 					})}
-						<form method="POST" action="?/advanceStep" use:enhance>
+						{@const hasUpload = uiSchema.components.some((c: any) => { const t = typeof c === 'string' ? c : c.type; return t === 'single_pdf_uploader' || t === 'multi_pdf_uploader'; })}
+						{@const hasCommittee = uiSchema.components.some((c: any) => (typeof c === 'string' ? c : c.type) === 'committee_selector')}
+						{@const committeeTypes = uiSchema.components.filter((c: any) => (typeof c === 'string' ? c : c.type) === 'committee_selector').map((c: any) => c.committee_type)}
+						{@const committeesMissing = committeeTypes.some((ct: string) => data.committees.filter((c: any) => c.committee_type === ct).length === 0)}
+
+						<form method="POST" action="?/advanceStep" enctype="multipart/form-data" use:enhance={handleStepComplete}>
 							<input type="hidden" name="step_data" value={'{}'} />
-							<button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+							<input type="hidden" name="agency_id" value={data.document.agency_id} />
+							<input type="hidden" name="step_seq" value={data.currentStep?.step_sequence} />
+
+							{#if hasCommittee && committeesMissing}
+								<p class="mb-2 text-sm text-amber-600">กรุณาเพิ่มกรรมการอย่างน้อย 1 คนในแต่ละประเภทก่อนดำเนินการต่อ</p>
+							{/if}
+
+							<button type="submit" disabled={hasCommittee && committeesMissing}
+								class="rounded-lg px-5 py-2.5 text-sm font-medium text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+								style="background: oklch(0.52 0.14 240);">
 								บันทึกและไปขั้นตอนถัดไป
 							</button>
 						</form>
@@ -355,13 +429,41 @@
 		</div>
 	{/if}
 
-	<!-- Payload History -->
-	{#if Object.keys(data.document.payload || {}).length > 0}
+	<!-- Step History from Payload -->
+	{#each [Object.entries((data.document.payload as Record<string, any>) || {}).filter(([k]) => k.startsWith('step_'))] as stepEntries}
+	{#if stepEntries.length > 0}
 		<div class="mt-6 rounded-xl border bg-white p-6">
-			<h2 class="text-lg font-bold text-gray-900">ข้อมูล Payload</h2>
-			<pre class="mt-3 overflow-auto rounded-lg bg-gray-50 p-4 text-xs">{JSON.stringify(data.document.payload, null, 2)}</pre>
+			<h2 class="text-lg font-bold text-gray-900">ประวัติการดำเนินการ</h2>
+			<div class="mt-3 space-y-3">
+				{#each stepEntries as [key, value]}
+					{@const stepName = key.replace(/^step_\d+_/, '').replace(/_/g, ' ')}
+					<div class="rounded-lg border p-3">
+						<div class="flex items-center gap-2">
+							<span class="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">ผ่านแล้ว</span>
+							<span class="text-sm font-medium text-gray-800">{stepName}</span>
+						</div>
+						{#if value && typeof value === 'object'}
+							<div class="mt-2 text-xs text-gray-500 space-y-0.5">
+								{#if value.approved}
+									<p>อนุมัติโดย: {value.approved_by_name || data.users.find((u: any) => u.id === value.approved_by)?.name || `User #${value.approved_by}`}</p>
+								{/if}
+								{#if value.approved_at}
+									<p>เมื่อ: {new Date(value.approved_at).toLocaleString('th-TH')}</p>
+								{/if}
+								{#if value.comment}
+									<p>หมายเหตุ: {value.comment}</p>
+								{/if}
+								{#if value.completed}
+									<p>ดำเนินการเสร็จสิ้น</p>
+								{/if}
+							</div>
+						{/if}
+					</div>
+				{/each}
+			</div>
 		</div>
 	{/if}
+	{/each}
 </div>
 
 <style>
