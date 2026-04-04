@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 
 	let { data, form: formResult } = $props();
 	let showCreateModal = $state(false);
@@ -194,30 +195,15 @@
 					</div>
 					<div class="form-field">
 						<label class="form-label">หน่วยงาน <span class="required">*</span></label>
-						<select name="agency_id" required class="form-input">
-							<option value="">-- เลือกหน่วยงาน --</option>
-							{#each data.agencies as agency}
-								<option value={agency.id}>{agency.name}</option>
-							{/each}
-						</select>
+						<CustomSelect name="agency_id" required options={data.agencies.map(a => ({ value: String(a.id), label: a.name }))} placeholder="-- เลือกหน่วยงาน --" class="mt-1" />
 					</div>
 					<div class="form-field">
 						<label class="form-label">แผนกแม่ (Parent)</label>
-						<select name="parent_id" class="form-input">
-							<option value="">-- ระดับสูงสุด (Root) --</option>
-							{#each data.units as unit}
-								<option value={unit.id}>{unit.name}</option>
-							{/each}
-						</select>
+						<CustomSelect name="parent_id" options={data.units.map(u => ({ value: String(u.id), label: u.name }))} placeholder="-- ระดับสูงสุด (Root) --" class="mt-1" />
 					</div>
 					<div class="form-field">
 						<label class="form-label">หัวหน้าหน่วยงาน</label>
-						<select name="head_of_unit_id" class="form-input">
-							<option value="">-- ไม่ระบุ --</option>
-							{#each data.users as user}
-								<option value={user.id}>{user.name}</option>
-							{/each}
-						</select>
+						<CustomSelect name="head_of_unit_id" options={data.users.map(u => ({ value: String(u.id), label: u.name }))} placeholder="-- ไม่ระบุ --" class="mt-1" />
 					</div>
 				</div>
 				<div class="modal-footer">
@@ -245,21 +231,11 @@
 					</div>
 					<div class="form-field">
 						<label class="form-label">แผนกแม่</label>
-						<select name="parent_id" class="form-input">
-							<option value="">-- ระดับสูงสุด --</option>
-							{#each data.units.filter((u) => u.id !== editingUnit.id) as unit}
-								<option value={unit.id} selected={editingUnit.parent_id === unit.id}>{unit.name}</option>
-							{/each}
-						</select>
+						<CustomSelect name="parent_id" options={data.units.filter((u) => u.id !== editingUnit.id).map(u => ({ value: String(u.id), label: u.name }))} value={editingUnit.parent_id ? String(editingUnit.parent_id) : ''} placeholder="-- ระดับสูงสุด --" class="mt-1" />
 					</div>
 					<div class="form-field">
 						<label class="form-label">หัวหน้าหน่วยงาน</label>
-						<select name="head_of_unit_id" class="form-input">
-							<option value="">-- ไม่ระบุ --</option>
-							{#each data.users as user}
-								<option value={user.id} selected={editingUnit.head_of_unit_id === user.id}>{user.name}</option>
-							{/each}
-						</select>
+						<CustomSelect name="head_of_unit_id" options={data.users.map(u => ({ value: String(u.id), label: u.name }))} value={editingUnit.head_of_unit_id ? String(editingUnit.head_of_unit_id) : ''} placeholder="-- ไม่ระบุ --" class="mt-1" />
 					</div>
 				</div>
 				<div class="modal-footer">

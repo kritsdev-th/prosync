@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { STEP_TYPES, STEP_TYPE_LABELS, COMMITTEE_TYPES, COMMITTEE_LABELS, inferStepType, getStepConfigSummary, type StepType } from '$lib/types/workflow';
 
 	let { data, form: formResult } = $props();
@@ -548,12 +549,13 @@
 					{#if isSuperAdmin}
 						<div class="ff">
 							<label class="fl">สร้างให้</label>
-							<select name="agency_id" class="fi" bind:value={createForAgencyId}>
-								<option value="">ส่วนกลาง (ทุกหน่วยงานใช้ได้)</option>
-								{#each data.agencies as agency}
-									<option value={agency.id}>{agency.name}</option>
-								{/each}
-							</select>
+							<CustomSelect
+								name="agency_id"
+								class="fi"
+								bind:value={createForAgencyId}
+								placeholder="ส่วนกลาง (ทุกหน่วยงานใช้ได้)"
+								options={[{ value: '', label: 'ส่วนกลาง (ทุกหน่วยงานใช้ได้)' }, ...data.agencies.map((agency) => ({ value: String(agency.id), label: agency.name }))]}
+							/>
 							<p class="field-hint">
 								{#if !createForAgencyId}
 									วิธีจัดซื้อส่วนกลางจะแสดงให้ทุกหน่วยงาน แก้ไขได้เฉพาะผู้ดูแลระบบ
@@ -613,13 +615,17 @@
 					{#if stepWorkflowId && getSteps(stepWorkflowId).length > 0}
 						<div class="ff">
 							<label class="fl">ตำแหน่งที่จะแทรก</label>
-							<select class="fi" bind:value={insertAfterSeq}>
-								<option value={0}>เพิ่มท้ายสุด (ขั้นตอนที่ {getSteps(stepWorkflowId).length + 1})</option>
-								<option value={-1}>เพิ่มก่อนขั้นตอนที่ 1</option>
-								{#each getSteps(stepWorkflowId) as s}
-									<option value={s.step_sequence}>แทรกหลังขั้นที่ {s.step_sequence}: {s.step_name}</option>
-								{/each}
-							</select>
+							<CustomSelect
+								class="fi"
+								value={String(insertAfterSeq)}
+								onchange={(v) => { insertAfterSeq = Number(v); }}
+								placeholder="เลือกตำแหน่ง"
+								options={[
+									{ value: '0', label: `เพิ่มท้ายสุด (ขั้นตอนที่ ${getSteps(stepWorkflowId).length + 1})` },
+									{ value: '-1', label: 'เพิ่มก่อนขั้นตอนที่ 1' },
+									...getSteps(stepWorkflowId).map((s) => ({ value: String(s.step_sequence), label: `แทรกหลังขั้นที่ ${s.step_sequence}: ${s.step_name}` }))
+								]}
+							/>
 						</div>
 					{/if}
 

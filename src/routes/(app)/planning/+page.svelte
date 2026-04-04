@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { formatBaht } from '$lib/utils/format';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 
 	let { data } = $props();
 	let showCreateModal = $state(false);
@@ -316,23 +317,21 @@
 		<div class="flex items-center gap-4">
 
 			{#if data.user.is_super_admin}
-				<select onchange={(e) => { const v = (e.target as HTMLSelectElement).value; goto(v ? `/planning?province_id=${v}` : '/planning'); }}
-					class="shrink-0 rounded-md px-2 py-1 text-[0.75rem]"
-					style="border: 1px solid var(--color-slate-200); color: var(--color-slate-700); background: white; outline: none">
-					<option value="">-- จังหวัด --</option>
-					{#each data.provinces as p}
-						<option value={p.id} selected={data.selectedProvinceId === p.id}>{p.name}</option>
-					{/each}
-				</select>
-				<select onchange={(e) => { const v = (e.target as HTMLSelectElement).value; if (v && data.selectedProvinceId) goto(`/planning?province_id=${data.selectedProvinceId}&agency_id=${v}`); }}
+				<CustomSelect
+					value={data.selectedProvinceId ? String(data.selectedProvinceId) : ''}
+					options={data.provinces.map((p) => ({ value: String(p.id), label: p.name }))}
+					placeholder="-- จังหวัด --"
+					onchange={(v) => goto(v ? `/planning?province_id=${v}` : '/planning')}
+					class="shrink-0"
+				/>
+				<CustomSelect
+					value={data.selectedAgencyId ? String(data.selectedAgencyId) : ''}
+					options={data.agencies.map((a) => ({ value: String(a.id), label: a.name }))}
+					placeholder={data.selectedProvinceId && data.agencies.length === 0 ? '-- ไม่มีหน่วยงาน --' : '-- หน่วยงาน --'}
 					disabled={!data.selectedProvinceId}
-					class="shrink-0 rounded-md px-2 py-1 text-[0.75rem]"
-					style="border: 1px solid var(--color-slate-200); color: {data.selectedProvinceId ? 'var(--color-slate-700)' : 'var(--color-slate-300)'}; background: white; outline: none; opacity: {data.selectedProvinceId ? '1' : '0.6'}">
-					<option value="">{data.selectedProvinceId && data.agencies.length === 0 ? '-- ไม่มีหน่วยงาน --' : '-- หน่วยงาน --'}</option>
-					{#each data.agencies as agency}
-						<option value={agency.id} selected={data.selectedAgencyId === agency.id}>{agency.name}</option>
-					{/each}
-				</select>
+					onchange={(v) => { if (v && data.selectedProvinceId) goto(`/planning?province_id=${data.selectedProvinceId}&agency_id=${v}`); }}
+					class="shrink-0"
+				/>
 			{/if}
 
 			{#if data.fiscalYears.length > 0}
@@ -388,31 +387,25 @@
 
 		<!-- Row 3: Search & Filters -->
 		<div class="mt-2 flex items-center gap-2 flex-wrap">
-			<div class="relative flex-1" style="min-width: 12rem">
+			<div class="relative flex-[2]" style="min-width: 10rem">
 				<svg class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" style="color: var(--color-slate-400)" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
 				<input type="text" placeholder="ค้นหาชื่อแผนงาน..."
 					bind:value={searchQuery}
 					class="w-full rounded-md py-1.5 pl-8 pr-2 text-[0.8125rem] outline-none"
 					style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white" />
 			</div>
-			<select bind:value={filterResponsibleUnitStr}
-				title={filterResponsibleUnit ? (data.orgUnits.find((u: any) => u.id === filterResponsibleUnit)?.name || '') : 'หน่วยงานรับผิดชอบ'}
-				class="filter-select rounded-md px-2 py-1.5 text-[0.8125rem] outline-none"
-				style="border: 1px solid var(--color-slate-200); color: var(--color-slate-700); background: white; max-width: 10rem">
-				<option value="">หน่วยงานรับผิดชอบ</option>
-				{#each data.orgUnits as unit}
-					<option value={String(unit.id)}>{unit.name}</option>
-				{/each}
-			</select>
-			<select bind:value={filterStakeholderUnitStr}
-				title={filterStakeholderUnit ? (data.orgUnits.find((u: any) => u.id === filterStakeholderUnit)?.name || '') : 'ผู้เกี่ยวข้อง (หน่วยงาน)'}
-				class="filter-select rounded-md px-2 py-1.5 text-[0.8125rem] outline-none"
-				style="border: 1px solid var(--color-slate-200); color: var(--color-slate-700); background: white; max-width: 10rem">
-				<option value="">ผู้เกี่ยวข้อง</option>
-				{#each data.orgUnits as unit}
-					<option value={String(unit.id)}>{unit.name}</option>
-				{/each}
-			</select>
+			<CustomSelect
+				bind:value={filterResponsibleUnitStr}
+				options={data.orgUnits.map((u) => ({ value: String(u.id), label: u.name }))}
+				placeholder="หน่วยงานรับผิดชอบ"
+				class="flex-1"
+			/>
+			<CustomSelect
+				bind:value={filterStakeholderUnitStr}
+				options={data.orgUnits.map((u) => ({ value: String(u.id), label: u.name }))}
+				placeholder="ผู้เกี่ยวข้อง"
+				class="flex-1"
+			/>
 			<div class="flex items-center gap-1.5">
 				<input type="number" placeholder="งบต่ำสุด" step="1000"
 					bind:value={filterBudgetMin}
@@ -567,21 +560,27 @@
 						<div class="grid grid-cols-2 gap-3">
 							<div>
 								{@render formField('c-type', 'ประเภท', true)}
-								<select id="c-type" name="plan_type" required
-									class="mt-1 block w-full rounded-lg px-3 py-2 text-sm outline-none"
-									style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white">
-									<option value="EXPENSE">รายจ่าย</option>
-									<option value="INCOME">รายรับ</option>
-								</select>
+								<div class="mt-1">
+									<CustomSelect
+										name="plan_type"
+										value="EXPENSE"
+										options={[{ value: 'EXPENSE', label: 'รายจ่าย' }, { value: 'INCOME', label: 'รายรับ' }]}
+										required
+										id="c-type"
+									/>
+								</div>
 							</div>
 							<div>
 								{@render formField('c-unit', 'หน่วยงานรับผิดชอบ', true)}
-								<select id="c-unit" name="responsible_unit_id" required
-									class="mt-1 block w-full rounded-lg px-3 py-2 text-sm outline-none"
-									style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white">
-									<option value="">-- เลือกหน่วยงาน --</option>
-									{#each data.orgUnits as unit}<option value={unit.id}>{unit.name}</option>{/each}
-								</select>
+								<div class="mt-1">
+									<CustomSelect
+										name="responsible_unit_id"
+										options={data.orgUnits.map((u) => ({ value: String(u.id), label: u.name }))}
+										placeholder="-- เลือกหน่วยงาน --"
+										required
+										id="c-unit"
+									/>
+								</div>
 							</div>
 						</div>
 					{:else}
@@ -743,12 +742,15 @@
 					{#if isEditRoot}
 						<div>
 							{@render formField('e-unit', 'หน่วยงานรับผิดชอบ')}
-							<select id="e-unit" name="responsible_unit_id"
-								class="mt-1 block w-full rounded-lg px-3 py-2 text-sm outline-none"
-								style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white">
-								<option value="">-- ไม่ระบุ --</option>
-								{#each data.orgUnits as unit}<option value={unit.id} selected={editingPlan.responsible_unit_id === unit.id}>{unit.name}</option>{/each}
-							</select>
+							<div class="mt-1">
+								<CustomSelect
+									name="responsible_unit_id"
+									value={editingPlan.responsible_unit_id ? String(editingPlan.responsible_unit_id) : ''}
+									options={data.orgUnits.map((u) => ({ value: String(u.id), label: u.name }))}
+									placeholder="-- ไม่ระบุ --"
+									id="e-unit"
+								/>
+							</div>
 						</div>
 					{:else}
 						<div class="grid grid-cols-2 gap-3">
@@ -1040,10 +1042,5 @@
 	}
 	.toast-slide-in {
 		animation: toastSlideIn 0.4s var(--ease-out-expo) forwards;
-	}
-	.filter-select {
-		text-overflow: ellipsis;
-		overflow: hidden;
-		white-space: nowrap;
 	}
 </style>

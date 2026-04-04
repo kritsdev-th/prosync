@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { exportToCsv } from '$lib/utils/format';
 
 	let { data, form } = $props();
@@ -177,12 +178,7 @@
 					</div>
 					<div>
 						<label class="block text-sm font-medium text-gray-700">หน่วยงาน</label>
-						<select name="agency_id" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
-							<option value="">-- ไม่ระบุ --</option>
-							{#each data.agencies as agency}
-								<option value={agency.id}>{agency.name}</option>
-							{/each}
-						</select>
+						<CustomSelect name="agency_id" options={data.agencies.map(a => ({ value: String(a.id), label: a.name }))} placeholder="-- ไม่ระบุ --" class="mt-1" />
 					</div>
 					<div class="grid grid-cols-2 gap-3">
 						<div>
@@ -231,12 +227,7 @@
 					</div>
 					<div>
 						<label class="block text-sm font-medium text-gray-700">หน่วยงาน</label>
-						<select name="agency_id" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
-							<option value="">-- ไม่ระบุ --</option>
-							{#each data.agencies as agency}
-								<option value={agency.id} selected={editingUser.agency_id === agency.id}>{agency.name}</option>
-							{/each}
-						</select>
+						<CustomSelect name="agency_id" options={data.agencies.map(a => ({ value: String(a.id), label: a.name }))} value={editingUser.agency_id ? String(editingUser.agency_id) : ''} placeholder="-- ไม่ระบุ --" class="mt-1" />
 					</div>
 					<div class="grid grid-cols-2 gap-3">
 						<div>
@@ -306,21 +297,11 @@
 					<h3 class="text-sm font-medium text-gray-700">เพิ่มสิทธิ์ใหม่</h3>
 					<div>
 						<label class="block text-sm text-gray-600">บทบาท</label>
-						<select name="role_id" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
-							<option value="">-- เลือกบทบาท --</option>
-							{#each data.roles as role}
-								<option value={role.id}>{role.name}</option>
-							{/each}
-						</select>
+						<CustomSelect name="role_id" required options={data.roles.map(r => ({ value: String(r.id), label: r.name }))} placeholder="-- เลือกบทบาท --" class="mt-1" />
 					</div>
 					<div>
 						<label class="block text-sm text-gray-600">แผนก</label>
-						<select name="org_unit_id" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
-							<option value="">-- เลือกแผนก --</option>
-							{#each data.orgUnits as unit}
-								<option value={unit.id}>{unit.name}</option>
-							{/each}
-						</select>
+						<CustomSelect name="org_unit_id" required options={data.orgUnits.map(u => ({ value: String(u.id), label: u.name }))} placeholder="-- เลือกแผนก --" class="mt-1" />
 					</div>
 					<label class="flex items-center gap-2 text-sm">
 						<input type="checkbox" name="is_primary_unit" value="true" class="rounded border-gray-300" />

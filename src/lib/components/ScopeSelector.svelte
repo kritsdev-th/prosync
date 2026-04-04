@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import type { Province, Agency, OrgUnit } from '$lib/types/dashboard';
 
 	interface Props {
@@ -52,26 +53,35 @@
 		goto(`${basePath}${queryString ? `?${queryString}` : ''}`, { replaceState: true });
 	}
 
-	function handleProvinceChange(event: Event) {
-		const target = event.target as HTMLSelectElement;
-		provinceId = target.value ? parseInt(target.value) : null;
+	function handleProvinceChange(val: string) {
+		provinceId = val ? parseInt(val) : null;
 		agencyId = null;
 		orgUnitId = null;
 		updateUrl();
 	}
 
-	function handleAgencyChange(event: Event) {
-		const target = event.target as HTMLSelectElement;
-		agencyId = target.value ? parseInt(target.value) : null;
+	function handleAgencyChange(val: string) {
+		agencyId = val ? parseInt(val) : null;
 		orgUnitId = null;
 		updateUrl();
 	}
 
-	function handleOrgUnitChange(event: Event) {
-		const target = event.target as HTMLSelectElement;
-		orgUnitId = target.value ? parseInt(target.value) : null;
+	function handleOrgUnitChange(val: string) {
+		orgUnitId = val ? parseInt(val) : null;
 		updateUrl();
 	}
+
+	let provinceOptions = $derived(
+		provinces.map((p) => ({ value: String(p.id), label: p.name }))
+	);
+
+	let agencyOptions = $derived(
+		filteredAgencies.map((a) => ({ value: String(a.id), label: a.name }))
+	);
+
+	let orgUnitOptions = $derived(
+		filteredOrgUnits.map((o) => ({ value: String(o.id), label: o.name }))
+	);
 
 	// Director doesn't need scope selector — auto-selected by server
 	let showSelector = $derived(!isDirector);
@@ -89,50 +99,41 @@
 		<div class="scope-fields" class:two-cols={!showOrgUnit}>
 			<div class="field-group">
 				<label for="province" class="field-label">จังหวัด</label>
-				<select
+				<CustomSelect
 					id="province"
 					class="field-select"
-					value={provinceId ?? ''}
+					options={provinceOptions}
+					value={provinceId ? String(provinceId) : ''}
+					placeholder="-- เลือกจังหวัด --"
 					onchange={handleProvinceChange}
-				>
-					<option value="">-- เลือกจังหวัด --</option>
-					{#each provinces as province}
-						<option value={province.id}>{province.name}</option>
-					{/each}
-				</select>
+				/>
 			</div>
 
 			<div class="field-group">
 				<label for="agency" class="field-label">หน่วยงาน</label>
-				<select
+				<CustomSelect
 					id="agency"
 					class="field-select"
-					value={agencyId ?? ''}
+					options={agencyOptions}
+					value={agencyId ? String(agencyId) : ''}
+					placeholder="-- เลือกหน่วยงาน --"
 					onchange={handleAgencyChange}
 					disabled={!provinceId}
-				>
-					<option value="">-- เลือกหน่วยงาน --</option>
-					{#each filteredAgencies as agency}
-						<option value={agency.id}>{agency.name}</option>
-					{/each}
-				</select>
+				/>
 			</div>
 
 			{#if showOrgUnit}
 				<div class="field-group">
 					<label for="orgUnit" class="field-label">หน่วยงานย่อย</label>
-					<select
+					<CustomSelect
 						id="orgUnit"
 						class="field-select"
-						value={orgUnitId ?? ''}
+						options={orgUnitOptions}
+						value={orgUnitId ? String(orgUnitId) : ''}
+						placeholder="-- เลือกหน่วยงานย่อย --"
 						onchange={handleOrgUnitChange}
 						disabled={!agencyId}
-					>
-						<option value="">-- เลือกหน่วยงานย่อย --</option>
-						{#each filteredOrgUnits as orgUnit}
-							<option value={orgUnit.id}>{orgUnit.name}</option>
-						{/each}
-					</select>
+					/>
 				</div>
 			{/if}
 		</div>
@@ -186,34 +187,6 @@
 		font-size: 0.8125rem;
 		font-weight: 500;
 		color: oklch(0.35 0.02 180);
-	}
-
-	.field-select {
-		padding: 10px 14px;
-		border: 1px solid oklch(0.82 0.015 180);
-		border-radius: 10px;
-		background: oklch(1 0 0);
-		font-family: 'Noto Sans Thai', sans-serif;
-		font-size: 0.9375rem;
-		color: oklch(0.25 0.02 180);
-		transition: border-color 0.2s ease, box-shadow 0.2s ease;
-		cursor: pointer;
-	}
-
-	.field-select:hover {
-		border-color: oklch(0.75 0.02 180);
-	}
-
-	.field-select:focus {
-		outline: none;
-		border-color: oklch(0.52 0.14 240);
-		box-shadow: 0 0 0 3px oklch(0.52 0.14 240 / 0.15);
-	}
-
-	.field-select:disabled {
-		background: oklch(0.94 0.005 180);
-		color: oklch(0.6 0.01 180);
-		cursor: not-allowed;
 	}
 
 	@keyframes slide-up {

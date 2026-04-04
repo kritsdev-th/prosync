@@ -5,6 +5,7 @@
 	import Pagination from '$lib/components/Pagination.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ScopeSelector from '$lib/components/ScopeSelector.svelte';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { formatBaht, formatNumber, exportToCsv } from '$lib/utils/format';
 
 	let { data, form: formResult } = $props();
@@ -219,12 +220,13 @@
 				<div class="space-y-4">
 					<div>
 						<label class="mb-1 block text-sm font-medium" style="color: oklch(0.35 0.02 180);">ธนาคาร</label>
-						<select name="bank_id" required class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color: oklch(0.82 0.015 180);">
-							<option value="">-- เลือกธนาคาร --</option>
-							{#each data.banks as b}
-								<option value={b.id}>{b.name} ({b.bank_code})</option>
-							{/each}
-						</select>
+						<CustomSelect
+							options={data.banks.map((b: any) => ({ value: String(b.id), label: `${b.name} (${b.bank_code})` }))}
+							name="bank_id"
+							required={true}
+							placeholder="-- เลือกธนาคาร --"
+							class="w-full"
+						/>
 					</div>
 					<div>
 						<label class="mb-1 block text-sm font-medium" style="color: oklch(0.35 0.02 180);">ชื่อบัญชี</label>

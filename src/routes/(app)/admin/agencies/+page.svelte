@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { exportToCsv } from '$lib/utils/format';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -83,17 +84,11 @@
 				</div>
 				<div class="form-field">
 					<label class="form-label">ประเภท <span class="required">*</span></label>
-					<select name="agency_type" required class="form-input">
-						<option value="">-- เลือกประเภท --</option>
-						{#each agencyTypes as t}<option value={t.value}>{t.label}</option>{/each}
-					</select>
+					<CustomSelect name="agency_type" required options={agencyTypes} placeholder="-- เลือกประเภท --" class="mt-1" />
 				</div>
 				<div class="form-field">
 					<label class="form-label">จังหวัด <span class="required">*</span></label>
-					<select name="province_id" required class="form-input">
-						<option value="">-- เลือกจังหวัด --</option>
-						{#each data.provinces as p}<option value={p.id}>{p.name}</option>{/each}
-					</select>
+					<CustomSelect name="province_id" required options={data.provinces.map(p => ({ value: String(p.id), label: p.name }))} placeholder="-- เลือกจังหวัด --" class="mt-1" />
 				</div>
 				<div class="form-field create-actions">
 					<button type="submit" class="btn-primary full-width">เพิ่มหน่วยงาน</button>
@@ -125,14 +120,8 @@
 									}} class="edit-grid">
 										<input type="hidden" name="id" value={agency.id} />
 										<input type="text" name="name" bind:value={editName} required class="form-input" />
-										<select name="agency_type" bind:value={editType} required class="form-input">
-											<option value="">-- ประเภท --</option>
-											{#each agencyTypes as t}<option value={t.value}>{t.label}</option>{/each}
-										</select>
-										<select name="province_id" bind:value={editProvinceId} required class="form-input">
-											<option value="">-- จังหวัด --</option>
-											{#each data.provinces as p}<option value={p.id}>{p.name}</option>{/each}
-										</select>
+										<CustomSelect name="agency_type" bind:value={editType} required options={agencyTypes} placeholder="-- ประเภท --" class="mt-1" />
+										<CustomSelect name="province_id" value={String(editProvinceId ?? '')} onchange={(v) => { editProvinceId = v ? Number(v) : null; }} required options={data.provinces.map(p => ({ value: String(p.id), label: p.name }))} placeholder="-- จังหวัด --" class="mt-1" />
 										<div class="edit-actions">
 											<button type="submit" class="btn-sm-primary">บันทึก</button>
 											<button type="button" onclick={cancelEdit} class="btn-sm-ghost">ยกเลิก</button>

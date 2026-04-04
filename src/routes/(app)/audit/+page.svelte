@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { formatThaiDateTime, exportToCsv } from '$lib/utils/format';
 
 	let { data } = $props();
@@ -61,13 +62,11 @@
 		goto(buildUrl({ collection: col, province_id: data.selectedProvinceId, agency_id: data.selectedAgencyId }));
 	}
 
-	function onProvinceChange(e: Event) {
-		const val = (e.target as HTMLSelectElement).value;
+	function onProvinceChange(val: string) {
 		goto(buildUrl({ collection: data.collection, province_id: val || null, agency_id: null }));
 	}
 
-	function onAgencyChange(e: Event) {
-		const val = (e.target as HTMLSelectElement).value;
+	function onAgencyChange(val: string) {
 		goto(buildUrl({ collection: data.collection, province_id: data.selectedProvinceId, agency_id: val || null }));
 	}
 
@@ -93,21 +92,24 @@
 		<div class="scope-bar">
 			<div class="scope-field">
 				<span class="scope-label">จังหวัด</span>
-				<select onchange={onProvinceChange} class="scope-select">
-					<option value="">-- เลือกจังหวัด --</option>
-					{#each data.provinces as p}
-						<option value={p.id} selected={data.selectedProvinceId === p.id}>{p.name}</option>
-					{/each}
-				</select>
+				<CustomSelect
+					options={data.provinces.map((p: any) => ({ value: String(p.id), label: p.name }))}
+					value={data.selectedProvinceId ? String(data.selectedProvinceId) : ''}
+					placeholder="-- เลือกจังหวัด --"
+					onchange={onProvinceChange}
+					class="scope-select"
+				/>
 			</div>
 			<div class="scope-field">
 				<span class="scope-label" class:label-disabled={!data.selectedProvinceId}>หน่วยงาน</span>
-				<select onchange={onAgencyChange} disabled={!data.selectedProvinceId} class="scope-select" class:select-disabled={!data.selectedProvinceId}>
-					<option value="">-- เลือกหน่วยงาน --</option>
-					{#each data.agencies as a}
-						<option value={a.id} selected={data.selectedAgencyId === a.id}>{a.name}</option>
-					{/each}
-				</select>
+				<CustomSelect
+					options={data.agencies.map((a: any) => ({ value: String(a.id), label: a.name }))}
+					value={data.selectedAgencyId ? String(data.selectedAgencyId) : ''}
+					placeholder="-- เลือกหน่วยงาน --"
+					disabled={!data.selectedProvinceId}
+					onchange={onAgencyChange}
+					class="scope-select"
+				/>
 			</div>
 		</div>
 	{/if}

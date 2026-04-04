@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { formatThaiDateTime, formatBaht, formatNumber } from '$lib/utils/format';
 	import { goto } from '$app/navigation';
 
@@ -173,12 +174,13 @@
 								{/each}
 								<form method="POST" action="?/addCommittee" use:enhance class="mt-3 flex gap-2">
 									<input type="hidden" name="committee_type" value={committeeType} />
-									<select name="user_id" required class="flex-1 rounded-lg border border-gray-300 px-2 py-1 text-sm">
-										<option value="">-- เลือกบุคคล --</option>
-										{#each data.users as u}
-											<option value={u.id}>{u.name}</option>
-										{/each}
-									</select>
+									<CustomSelect
+										name="user_id"
+										required
+										placeholder="-- เลือกบุคคล --"
+										class="flex-1 rounded-lg border border-gray-300 px-2 py-1 text-sm"
+										options={data.users.map((u) => ({ value: String(u.id), label: u.name }))}
+									/>
 									<input name="role_in_committee" placeholder="ตำแหน่งในคณะ" required class="rounded-lg border border-gray-300 px-2 py-1 text-sm" />
 									<button type="submit" class="rounded-lg bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700">เพิ่ม</button>
 								</form>
@@ -192,12 +194,13 @@
 									<div class="mt-2 text-sm">{bidder.vendor_name} - {bidder.proposed_price ? formatBaht(bidder.proposed_price) : 'รอเสนอราคา'}</div>
 								{/each}
 								<form method="POST" action="?/addBidder" use:enhance class="mt-3 flex gap-2">
-									<select name="vendor_id" required class="flex-1 rounded-lg border border-gray-300 px-2 py-1 text-sm">
-										<option value="">-- เลือก Vendor --</option>
-										{#each data.vendors as v}
-											<option value={v.id}>{v.company_name} ({v.tax_id})</option>
-										{/each}
-									</select>
+									<CustomSelect
+										name="vendor_id"
+										required
+										placeholder="-- เลือก Vendor --"
+										class="flex-1 rounded-lg border border-gray-300 px-2 py-1 text-sm"
+										options={data.vendors.map((v) => ({ value: String(v.id), label: `${v.company_name} (${v.tax_id})` }))}
+									/>
 									<button type="submit" class="rounded-lg bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700">เพิ่ม</button>
 								</form>
 							</div>
@@ -356,20 +359,22 @@
 									</div>
 									<div>
 										<label class="block text-sm font-medium text-gray-700">บัญชีจ่ายเงิน <span class="text-red-500">*</span></label>
-										<select name="payment_bank_account_id" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-											{#each data.bankAccounts.filter((a) => !a.is_tax_pool) as account}
-												<option value={account.id}>{account.account_name} ({account.account_number})</option>
-											{/each}
-										</select>
+										<CustomSelect
+											name="payment_bank_account_id"
+											required
+											placeholder="-- เลือกบัญชี --"
+											class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+											options={data.bankAccounts.filter((a) => !a.is_tax_pool).map((account) => ({ value: String(account.id), label: `${account.account_name} (${account.account_number})` }))}
+										/>
 									</div>
 									<div>
 										<label class="block text-sm font-medium text-gray-700">บัญชีพักภาษี</label>
-										<select name="tax_pool_account_id" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-											<option value="">-- ไม่มี --</option>
-											{#each data.bankAccounts.filter((a) => a.is_tax_pool) as account}
-												<option value={account.id}>{account.account_name} ({account.account_number})</option>
-											{/each}
-										</select>
+										<CustomSelect
+											name="tax_pool_account_id"
+											placeholder="-- ไม่มี --"
+											class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+											options={[{ value: '', label: '-- ไม่มี --' }, ...data.bankAccounts.filter((a) => a.is_tax_pool).map((account) => ({ value: String(account.id), label: `${account.account_name} (${account.account_number})` }))]}
+										/>
 									</div>
 									<button type="submit" class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700">
 										สร้างฎีกาเบิกจ่าย

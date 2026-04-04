@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 
 	let { data, form: formResult } = $props();
 	let errors = $derived((formResult?.errors ?? {}) as Record<string, string[]>);
@@ -61,14 +62,14 @@
 					<label for="agency_id" class="block text-[0.8125rem] font-medium" style="color: var(--color-slate-700)">
 						สังกัดหน่วยงาน <span style="color: var(--color-error)">*</span>
 					</label>
-					<select id="agency_id" name="agency_id" required
-						class="mt-1 block w-full rounded-lg px-3 py-2 text-sm outline-none"
-						style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white">
-						<option value="">-- เลือกหน่วยงาน --</option>
-						{#each data.agencies as agency}
-							<option value={agency.id}>{agency.name}</option>
-						{/each}
-					</select>
+					<CustomSelect
+						options={data.agencies.map((agency: any) => ({ value: String(agency.id), label: agency.name }))}
+						name="agency_id"
+						id="agency_id"
+						required={true}
+						placeholder="-- เลือกหน่วยงาน --"
+						class="mt-1 w-full"
+					/>
 					{#if errors.agency_id}
 						<p class="mt-1 text-[0.75rem]" style="color: var(--color-error)">{errors.agency_id[0]}</p>
 					{/if}

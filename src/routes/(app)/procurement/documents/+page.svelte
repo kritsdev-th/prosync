@@ -4,6 +4,7 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ScopeSelector from '$lib/components/ScopeSelector.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { formatBaht } from '$lib/utils/format';
 	import { inferStepType, STEP_TYPE_LABELS, getStepConfigSummary } from '$lib/types/workflow';
 
@@ -124,21 +125,24 @@
 				<div class="modal-body">
 					<div class="ff">
 						<label class="fl">วิธีจัดซื้อจัดจ้าง <span class="req">*</span></label>
-						<select name="workflow_id" required class="fi" onchange={(e) => { selectedWorkflowId = Number((e.target as HTMLSelectElement).value) || null; }}>
-							<option value="">-- เลือกวิธี --</option>
-							{#each data.workflows as wf}
-								<option value={wf.id}>{wf.name} ({wf.total_steps} ขั้นตอน)</option>
-							{/each}
-						</select>
+						<CustomSelect
+							name="workflow_id"
+							required
+							placeholder="-- เลือกวิธี --"
+							class="fi"
+							options={data.workflows.map((wf) => ({ value: String(wf.id), label: `${wf.name} (${wf.total_steps} ขั้นตอน)` }))}
+							onchange={(v) => { selectedWorkflowId = Number(v) || null; }}
+						/>
 					</div>
 					<div class="ff">
 						<label class="fl">แผนงาน (Leaf Node) <span class="req">*</span></label>
-						<select name="plan_id" required class="fi">
-							<option value="">-- เลือกแผนงาน --</option>
-							{#each data.leafPlans as plan}
-								<option value={plan.id}>[ปี {plan.fiscal_year}] {plan.title} ({formatBaht(plan.estimated_amount)})</option>
-							{/each}
-						</select>
+						<CustomSelect
+							name="plan_id"
+							required
+							placeholder="-- เลือกแผนงาน --"
+							class="fi"
+							options={data.leafPlans.map((plan) => ({ value: String(plan.id), label: `[ปี ${plan.fiscal_year}] ${plan.title} (${formatBaht(plan.estimated_amount)})` }))}
+						/>
 					</div>
 
 					<!-- Steps Preview -->

@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { formatBaht, formatThaiDate, exportToCsv } from '$lib/utils/format';
 
 	let { data, form: formResult } = $props();
@@ -11,8 +12,7 @@
 	let currentPage = $state(1);
 	const perPage = 10;
 
-	function onProvinceChange(e: Event) {
-		const val = (e.target as HTMLSelectElement).value;
+	function onProvinceChange(val: string) {
 		if (val) goto(`/admin/median-prices?province_id=${val}`);
 		else goto('/admin/median-prices');
 	}
@@ -76,12 +76,13 @@
 				<path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
 			</svg>
 			<span class="province-label">จังหวัด</span>
-			<select onchange={onProvinceChange} class="province-select">
-				<option value="">-- เลือกจังหวัด --</option>
-				{#each data.provinces as p}
-					<option value={p.id} selected={data.selectedProvinceId === p.id}>{p.name}</option>
-				{/each}
-			</select>
+			<CustomSelect
+				options={data.provinces.map(p => ({ value: String(p.id), label: p.name }))}
+				value={data.selectedProvinceId ? String(data.selectedProvinceId) : ''}
+				onchange={onProvinceChange}
+				placeholder="-- เลือกจังหวัด --"
+				class="province-select"
+			/>
 		</div>
 		{#if data.selectedProvinceName}
 			<span class="province-count">{data.prices.length} รายการ</span>

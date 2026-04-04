@@ -1,16 +1,15 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import CustomSelect from '$lib/components/CustomSelect.svelte';
 
 	let { data } = $props();
 
-	function onProvinceChange(e: Event) {
-		const val = (e.target as HTMLSelectElement).value;
+	function onProvinceChange(val: string) {
 		if (val) goto(`/org-management?province_id=${val}`);
 		else goto('/org-management');
 	}
 
-	function onAgencyChange(e: Event) {
-		const val = (e.target as HTMLSelectElement).value;
+	function onAgencyChange(val: string) {
 		if (val && data.selectedProvinceId) {
 			goto(`/org-management?province_id=${data.selectedProvinceId}&agency_id=${val}`);
 		}
@@ -87,12 +86,13 @@
 					<path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
 				</svg>
 				<span class="scope-label">จังหวัด</span>
-				<select onchange={onProvinceChange} class="scope-select">
-					<option value="">-- เลือกจังหวัด --</option>
-					{#each data.provinces as p}
-						<option value={p.id} selected={data.selectedProvinceId === p.id}>{p.name}</option>
-					{/each}
-				</select>
+				<CustomSelect
+					options={data.provinces.map((p: any) => ({ value: String(p.id), label: p.name }))}
+					value={data.selectedProvinceId ? String(data.selectedProvinceId) : ''}
+					placeholder="-- เลือกจังหวัด --"
+					onchange={onProvinceChange}
+					class="scope-select"
+				/>
 			</div>
 			<div class="scope-divider"></div>
 			<div class="scope-field">
@@ -100,21 +100,16 @@
 					<path stroke-linecap="round" stroke-linejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
 				</svg>
 				<span class="scope-label" class:disabled-label={!data.selectedProvinceId}>หน่วยงาน</span>
-				<select
-					onchange={onAgencyChange}
+				<CustomSelect
+					options={data.agencies.map((a: any) => ({ value: String(a.id), label: a.name }))}
+					value={data.selectedAgencyId ? String(data.selectedAgencyId) : ''}
+					placeholder={data.selectedProvinceId && data.agencies.length === 0
+						? '-- ไม่มีหน่วยงานในจังหวัดนี้ --'
+						: '-- เลือกหน่วยงาน --'}
 					disabled={!data.selectedProvinceId}
+					onchange={onAgencyChange}
 					class="scope-select"
-					class:disabled-select={!data.selectedProvinceId}
-				>
-					<option value="">
-						{data.selectedProvinceId && data.agencies.length === 0
-							? '-- ไม่มีหน่วยงานในจังหวัดนี้ --'
-							: '-- เลือกหน่วยงาน --'}
-					</option>
-					{#each data.agencies as a}
-						<option value={a.id} selected={data.selectedAgencyId === a.id}>{a.name}</option>
-					{/each}
-				</select>
+				/>
 			</div>
 		</div>
 	{:else}
