@@ -9,7 +9,6 @@
 	let editEmail = $state(data.profile.email || '');
 	let editPhone = $state(data.profile.phone || '');
 
-	// ผอ./รองผอ. ไม่สามารถแก้ position_rank ตัวเองได้ — ต้อง super admin เท่านั้น
 	let canEditRank = $derived(!data.user.is_director && !data.user.is_super_admin);
 
 	function startEdit() {
@@ -22,300 +21,349 @@
 	}
 </script>
 
-<div class="profile-page">
-	<!-- Header -->
-	<div class="profile-header">
-		<div class="header-bg"></div>
-		<div class="header-content">
-			<!-- Avatar Section -->
-			<div class="avatar-section">
-				<div class="avatar-wrapper">
-					{#if data.profile.profile_picture}
-						<img src={data.profile.profile_picture} alt={data.profile.name} class="avatar-img" />
-					{:else}
-						<div class="avatar-placeholder">
-							{data.profile.name.charAt(0)}
-						</div>
+<div class="profile">
+	{#if formResult?.message}
+		<div class="toast toast-ok">{formResult.message}</div>
+	{/if}
+	{#if formResult?.error}
+		<div class="toast toast-err">{formResult.error}</div>
+	{/if}
+
+	<!-- ======== HERO ======== -->
+	<div class="hero">
+		<div class="hero-bg"></div>
+		<div class="hero-content">
+			<div class="av-wrap">
+				{#if data.profile.profile_picture}
+					<img src={data.profile.profile_picture} alt="" class="av" />
+				{:else}
+					<div class="av av-ph">{data.profile.name.charAt(0)}</div>
+				{/if}
+				<form method="POST" action="?/uploadAvatar" enctype="multipart/form-data" use:enhance class="av-form">
+					<label class="av-btn">
+						<input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" hidden
+							onchange={(e) => (e.target as HTMLFormElement).form?.requestSubmit()} />
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+					</label>
+				</form>
+			</div>
+			<div class="hero-text">
+				<h1>{data.profile.name}</h1>
+				<div class="hero-tags">
+					{#if data.roleName}
+						<span class="tag">{data.roleName}</span>
 					{/if}
-					<form method="POST" action="?/uploadAvatar" enctype="multipart/form-data" use:enhance class="avatar-upload-form">
-						<label class="avatar-upload-btn" title="เปลี่ยนรูปโปรไฟล์">
-							<input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" class="sr-only"
-								onchange={(e) => (e.target as HTMLFormElement).form?.requestSubmit()} />
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-								<path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
-							</svg>
-						</label>
-					</form>
-				</div>
-				<div class="header-info">
-					<h1 class="profile-name">{data.profile.name}</h1>
-					<p class="profile-role">{data.roleName || data.profile.position_rank || 'ผู้ใช้งาน'}</p>
-					{#if data.agencyName}
-						<p class="profile-agency">{data.agencyName}</p>
+					{#if data.user.is_super_admin}
+						<span class="tag tag-gold">Super Admin</span>
 					{/if}
 				</div>
+				{#if data.agencyName}
+					<p class="hero-sub">{data.agencyName}</p>
+				{/if}
+			</div>
+			<div class="hero-contact">
+				{#if data.profile.phone}
+					<div class="contact-item">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
+						{data.profile.phone}
+					</div>
+				{/if}
+				{#if data.profile.email}
+					<div class="contact-item">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+						{data.profile.email}
+					</div>
+				{/if}
 			</div>
 		</div>
 	</div>
 
-	<!-- Toast -->
-	{#if formResult?.message}
-		<div class="toast-success">{formResult.message}</div>
-	{/if}
-	{#if formResult?.error}
-		<div class="toast-error">{formResult.error}</div>
+	<!-- Action bar (between hero and cards) -->
+	{#if !isEditing}
+		<div class="action-bar">
+			<button onclick={startEdit} class="btn-edit">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+				แก้ไขข้อมูลส่วนตัว
+			</button>
+		</div>
 	{/if}
 
-	<!-- Info Cards -->
-	<div class="info-grid">
-		<!-- Personal Info -->
-		<div class="info-card">
-			<div class="card-header">
-				<div class="card-icon">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-					</svg>
-				</div>
-				<h2 class="card-title">ข้อมูลส่วนตัว</h2>
-				{#if !isEditing}
-					<button onclick={startEdit} class="edit-btn">
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-						</svg>
-						แก้ไข
-					</button>
+	<!-- ======== CARDS ======== -->
+	<div class="grid">
+		<!-- Personal -->
+		<section class="card">
+			<div class="card-top blue">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+				<span>ข้อมูลส่วนตัว</span>
+			</div>
+			<div class="card-body">
+				{#if isEditing}
+					<form method="POST" action="?/updateProfile" use:enhance={() => {
+						return async ({ update }) => { isEditing = false; await update(); };
+					}}>
+						<div class="f-grid">
+							<div class="f-row">
+								<div class="f">
+									<label for="e-pos">ยศ/คำนำหน้า</label>
+									<input id="e-pos" name="position" bind:value={editPosition} placeholder="เช่น นาย, นพ." />
+								</div>
+								<div class="f">
+									<label for="e-name">ชื่อ-นามสกุล</label>
+									<input id="e-name" name="name" bind:value={editName} required />
+								</div>
+							</div>
+							<div class="f">
+								<label for="e-rank">ระดับตำแหน่ง</label>
+								{#if canEditRank}
+									<input id="e-rank" name="position_rank" bind:value={editPositionRank} placeholder="เช่น เจ้าพนักงานพัสดุชำนาญงาน" />
+								{:else}
+									<input id="e-rank" name="position_rank" value={data.profile.position_rank || ''} readonly class="ro" />
+									<small>ผอ./รองผอ. แก้ไขได้โดย Super Admin เท่านั้น</small>
+								{/if}
+							</div>
+							<div class="f-row">
+								<div class="f">
+									<label for="e-email">อีเมล</label>
+									<input id="e-email" name="email" type="email" bind:value={editEmail} placeholder="email@example.com" />
+								</div>
+								<div class="f">
+									<label for="e-phone">เบอร์โทร</label>
+									<input id="e-phone" name="phone" bind:value={editPhone} placeholder="08x-xxx-xxxx" />
+								</div>
+							</div>
+						</div>
+						<div class="f-actions">
+							<button type="button" class="btn-ghost" onclick={() => (isEditing = false)}>ยกเลิก</button>
+							<button type="submit" class="btn-primary">บันทึกข้อมูล</button>
+						</div>
+					</form>
+				{:else}
+					<table class="info-table"><tbody>
+						<tr><td>ยศ/คำนำหน้า</td><td>{data.profile.position || '—'}</td></tr>
+						<tr><td>ชื่อ-นามสกุล</td><td>{data.profile.name}</td></tr>
+						<tr><td>ระดับตำแหน่ง</td><td>{data.profile.position_rank || '—'}</td></tr>
+						<tr><td>อีเมล</td><td>{data.profile.email || '—'}</td></tr>
+						<tr><td>เบอร์โทร</td><td>{data.profile.phone || '—'}</td></tr>
+					</tbody></table>
 				{/if}
 			</div>
+		</section>
 
-			{#if isEditing}
-				<form method="POST" action="?/updateProfile" use:enhance={() => {
-					return async ({ update }) => { isEditing = false; await update(); };
-				}}>
-					<div class="form-grid">
-						<div class="form-field">
-							<label class="field-label">ยศ/คำนำหน้า</label>
-							<input name="position" bind:value={editPosition} class="field-input" placeholder="เช่น นาย, นาง, นพ." />
-						</div>
-						<div class="form-field">
-							<label class="field-label">ชื่อ-นามสกุล</label>
-							<input name="name" bind:value={editName} required class="field-input" />
-						</div>
-						<div class="form-field">
-							<label class="field-label">ระดับตำแหน่ง</label>
-							{#if canEditRank}
-								<input name="position_rank" bind:value={editPositionRank} class="field-input" placeholder="เช่น เจ้าพนักงานพัสดุชำนาญงาน" />
-							{:else}
-								<input name="position_rank" value={data.profile.position_rank || ''} readonly class="field-input field-readonly" />
-								<p class="field-hint">ผอ./รองผอ. แก้ไขระดับตำแหน่งได้โดย Super Admin เท่านั้น</p>
-							{/if}
-						</div>
-						<div class="form-field">
-							<label class="field-label">อีเมล</label>
-							<input name="email" type="email" bind:value={editEmail} class="field-input" placeholder="email@example.com" />
-						</div>
-						<div class="form-field">
-							<label class="field-label">เบอร์โทร</label>
-							<input name="phone" bind:value={editPhone} class="field-input" placeholder="08x-xxx-xxxx" />
-						</div>
-					</div>
-					<div class="form-actions">
-						<button type="button" onclick={() => (isEditing = false)} class="btn-cancel">ยกเลิก</button>
-						<button type="submit" class="btn-save">บันทึก</button>
-					</div>
-				</form>
-			{:else}
-				<div class="info-rows">
-					<div class="info-row">
-						<span class="info-label">ยศ/คำนำหน้า</span>
-						<span class="info-value">{data.profile.position || '—'}</span>
-					</div>
-					<div class="info-row">
-						<span class="info-label">ชื่อ-นามสกุล</span>
-						<span class="info-value">{data.profile.name}</span>
-					</div>
-					<div class="info-row">
-						<span class="info-label">ระดับตำแหน่ง</span>
-						<span class="info-value">{data.profile.position_rank || '—'}</span>
-					</div>
-					<div class="info-row">
-						<span class="info-label">อีเมล</span>
-						<span class="info-value">{data.profile.email || '—'}</span>
-					</div>
-					<div class="info-row">
-						<span class="info-label">เบอร์โทร</span>
-						<span class="info-value">{data.profile.phone || '—'}</span>
-					</div>
-				</div>
-			{/if}
-		</div>
-
-		<!-- Organization Info (read-only) -->
-		<div class="info-card">
-			<div class="card-header">
-				<div class="card-icon org">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
-					</svg>
-				</div>
-				<h2 class="card-title">ข้อมูลองค์กร</h2>
+		<!-- Org -->
+		<section class="card">
+			<div class="card-top green">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
+				<span>ข้อมูลองค์กร</span>
 			</div>
-			<div class="info-rows">
-				<div class="info-row">
-					<span class="info-label">เลขบัตรประชาชน</span>
-					<span class="info-value mono">{data.profile.id_card}</span>
-				</div>
-				<div class="info-row">
-					<span class="info-label">บทบาท</span>
-					<span class="info-value">{data.roleName || '—'}</span>
-				</div>
-				<div class="info-row">
-					<span class="info-label">หน่วยงาน</span>
-					<span class="info-value">{data.agencyName || '—'}</span>
-				</div>
-				<div class="info-row">
-					<span class="info-label">แผนก</span>
-					<span class="info-value">{data.orgUnitName || '—'}</span>
-				</div>
+			<div class="card-body">
+				<table class="info-table"><tbody>
+					<tr><td>เลขบัตรประชาชน</td><td class="mono">{data.profile.id_card}</td></tr>
+					<tr><td>บทบาท</td><td>{data.roleName || '—'}</td></tr>
+					<tr><td>หน่วยงาน</td><td>{data.agencyName || '—'}</td></tr>
+					<tr><td>แผนก</td><td>{data.orgUnitName || '—'}</td></tr>
+				</tbody></table>
+				<p class="ro-note">ข้อมูลส่วนนี้ไม่สามารถแก้ไขได้ หากต้องการเปลี่ยนแปลงกรุณาติดต่อผู้ดูแลระบบ</p>
 			</div>
-			<p class="readonly-note">ข้อมูลส่วนนี้ไม่สามารถแก้ไขได้</p>
-		</div>
+		</section>
 	</div>
 </div>
 
 <style>
-	.profile-page { animation: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+	.profile {
+		max-width: 900px; margin: 0 auto;
+		font-family: 'Noto Sans Thai', system-ui, sans-serif;
+		animation: fadeUp .5s ease;
+	}
 
-	/* Header */
-	.profile-header {
-		position: relative;
-		border-radius: 18px;
+	/* toast */
+	.toast { padding: 10px 16px; border-radius: 10px; font-size: .8125rem; margin-bottom: 14px; }
+	.toast-ok { background: #e8f5e9; color: #2e7d32; border-left: 3px solid #4caf50; }
+	.toast-err { background: #fce4ec; color: #c62828; border-left: 3px solid #ef5350; }
+
+	/* ========== HERO ========== */
+	.hero {
+		border-radius: 20px;
 		overflow: hidden;
-		margin-bottom: 24px;
+		margin-bottom: 16px;
+		box-shadow: 0 2px 12px rgb(0 0 0 / .08);
+		background: linear-gradient(135deg, #0a2d4f 0%, #0d3868 30%, #0f4c75 55%, #0b5e5a 75%, #094a42 100%);
 	}
-	.header-bg {
-		height: 120px;
-		background: linear-gradient(135deg, oklch(0.52 0.14 240), oklch(0.54 0.16 150));
-	}
-	.header-content {
-		padding: 0 28px 24px;
-		margin-top: -40px;
+	.hero-bg { display: none; }
+	.hero-content {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 20px;
+		padding: 32px;
 		position: relative;
 	}
-	.avatar-section { display: flex; align-items: flex-end; gap: 20px; }
 
-	.avatar-wrapper { position: relative; flex-shrink: 0; }
-	.avatar-img, .avatar-placeholder {
-		width: 88px; height: 88px; border-radius: 50%;
-		border: 4px solid oklch(0.995 0.002 180);
-		box-shadow: 0 4px 16px oklch(0.52 0.14 240 / 0.15);
+	/* avatar */
+	.av-wrap { position: relative; flex-shrink: 0; }
+	.av {
+		width: 110px; height: 110px;
+		border-radius: 50%;
+		border: 5px solid #fff;
+		box-shadow: 0 4px 24px rgb(13 59 102 / .25);
+		object-fit: cover;
+		background: #e3f2fd;
 	}
-	.avatar-img { object-fit: cover; }
-	.avatar-placeholder {
+	.av-ph {
 		display: flex; align-items: center; justify-content: center;
-		background: linear-gradient(135deg, oklch(0.52 0.14 240), oklch(0.54 0.16 150));
-		color: oklch(0.98 0.005 180); font-size: 2rem; font-weight: 700;
+		background: linear-gradient(135deg, #1565c0, #00897b);
+		color: #fff;
+		font-size: 2.75rem; font-weight: 800;
 	}
-	.avatar-upload-form { position: absolute; bottom: 0; right: 0; }
-	.avatar-upload-btn {
+	.av-form { position: absolute; bottom: 4px; right: 0; }
+	.av-btn {
 		display: flex; align-items: center; justify-content: center;
-		width: 30px; height: 30px; border-radius: 50%;
-		background: oklch(0.995 0.002 180);
-		border: 2px solid oklch(0.92 0.005 180);
+		width: 34px; height: 34px; border-radius: 50%;
+		background: #fff; border: 2px solid #e0e0e0;
+		box-shadow: 0 2px 8px rgb(0 0 0 / .12);
 		cursor: pointer;
-		box-shadow: 0 2px 6px oklch(0.5 0.02 180 / 0.15);
-		transition: background 0.15s ease;
+		transition: transform .15s, box-shadow .15s;
 	}
-	.avatar-upload-btn:hover { background: oklch(0.52 0.14 240 / 0.08); }
-	.avatar-upload-btn svg { width: 14px; height: 14px; color: oklch(0.52 0.14 240); }
-	.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+	.av-btn:hover { transform: scale(1.08); box-shadow: 0 4px 14px rgb(0 0 0 / .18); }
+	.av-btn svg { width: 16px; height: 16px; color: #1565c0; }
 
-	.header-info { padding-bottom: 4px; }
-	.profile-name { margin: 0 0 2px 0; font-size: 1.375rem; font-weight: 700; color: oklch(0.2 0.02 180); }
-	.profile-role { margin: 0; font-size: 0.875rem; color: oklch(0.5 0.02 180); }
-	.profile-agency { margin: 2px 0 0 0; font-size: 0.75rem; color: oklch(0.6 0.01 180); }
-
-	/* Toast */
-	.toast-success { padding: 12px 18px; margin-bottom: 16px; border-radius: 10px; background: oklch(0.54 0.16 150 / 0.08); color: oklch(0.38 0.14 150); font-size: 0.875rem; border-left: 3px solid oklch(0.54 0.16 150); }
-	.toast-error { padding: 12px 18px; margin-bottom: 16px; border-radius: 10px; background: oklch(0.58 0.2 25 / 0.08); color: oklch(0.45 0.18 25); font-size: 0.875rem; border-left: 3px solid oklch(0.58 0.2 25); }
-
-	/* Info Cards */
-	.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-	.info-card {
-		background: oklch(0.995 0.002 180);
-		border: 1px solid oklch(0.92 0.005 180);
-		border-radius: 16px;
-		padding: 24px;
+	/* hero text — sits ON the gradient */
+	.hero-text { flex: 1; min-width: 180px; }
+	.hero-text h1 {
+		margin: 0;
+		font-size: 1.75rem; font-weight: 800;
+		color: #fff;
+		text-shadow: 0 2px 8px rgb(0 0 0 / .2);
+		letter-spacing: -0.01em;
 	}
-	.card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-	.card-icon {
-		width: 36px; height: 36px; border-radius: 10px;
-		display: flex; align-items: center; justify-content: center;
-		background: oklch(0.52 0.14 240 / 0.08); color: oklch(0.52 0.14 240);
+	.hero-tags { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+	.tag {
+		padding: 3px 14px;
+		border-radius: 100px;
+		font-size: .7rem; font-weight: 600;
+		background: rgba(255,255,255,.25);
+		color: #fff;
+		border: 1px solid rgba(255,255,255,.3);
 	}
-	.card-icon.org { background: oklch(0.54 0.16 150 / 0.08); color: oklch(0.54 0.16 150); }
-	.card-icon svg { width: 18px; height: 18px; }
-	.card-title { margin: 0; font-size: 1rem; font-weight: 600; color: oklch(0.2 0.02 180); flex: 1; }
-
-	.edit-btn {
-		display: inline-flex; align-items: center; gap: 4px;
-		padding: 5px 12px; border-radius: 8px; border: none;
-		background: oklch(0.52 0.14 240 / 0.06);
-		color: oklch(0.52 0.14 240); font-size: 0.75rem; font-weight: 500;
-		cursor: pointer; font-family: 'Noto Sans Thai', sans-serif;
-		transition: background 0.15s ease;
+	.tag-gold {
+		background: rgba(255,215,0,.2);
+		border-color: rgba(255,215,0,.35);
+		color: #ffd54f;
 	}
-	.edit-btn:hover { background: oklch(0.52 0.14 240 / 0.12); }
-	.edit-btn svg { width: 14px; height: 14px; }
-
-	/* Info Rows */
-	.info-rows { display: flex; flex-direction: column; gap: 12px; }
-	.info-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-	.info-label { font-size: 0.8125rem; color: oklch(0.5 0.02 180); flex-shrink: 0; }
-	.info-value { font-size: 0.875rem; font-weight: 500; color: oklch(0.25 0.02 180); text-align: right; }
-	.info-value.mono { font-family: 'SF Mono', monospace; letter-spacing: 0.5px; }
-
-	.readonly-note {
-		margin: 16px 0 0 0; padding: 10px 14px; border-radius: 8px;
-		background: oklch(0.97 0.005 180); font-size: 0.75rem;
-		color: oklch(0.55 0.02 180); text-align: center;
+	.hero-sub {
+		margin: 6px 0 0;
+		font-size: .8125rem;
+		color: rgba(255,255,255,.9);
 	}
 
-	/* Form */
-	.form-grid { display: flex; flex-direction: column; gap: 14px; }
-	.form-field { display: flex; flex-direction: column; gap: 4px; }
-	.field-label { font-size: 0.8125rem; font-weight: 500; color: oklch(0.4 0.02 180); }
-	.field-input {
+	/* contact items */
+	.hero-contact {
+		display: flex; flex-direction: column; gap: 6px;
+		flex-shrink: 0; margin-left: auto;
+	}
+	.contact-item {
+		display: flex; align-items: center; gap: 6px;
+		font-size: .8rem; color: rgba(255,255,255,.95);
+	}
+	.contact-item svg { width: 15px; height: 15px; opacity: .85; flex-shrink: 0; }
+
+	/* ========== ACTION BAR ========== */
+	.action-bar {
+		display: flex; justify-content: flex-end;
+		margin-bottom: 16px;
+	}
+	.btn-edit {
+		display: inline-flex; align-items: center; gap: 6px;
+		padding: 8px 20px; border-radius: 10px;
+		background: #fff; border: 1px solid #e0e6ed;
+		color: #1565c0; font-size: .8125rem; font-weight: 600;
+		cursor: pointer; font-family: inherit;
+		box-shadow: 0 1px 4px rgb(0 0 0 / .06);
+		transition: background .15s, border-color .15s, box-shadow .15s, transform .15s;
+	}
+	.btn-edit:hover {
+		background: #e3f2fd; border-color: #90caf9;
+		box-shadow: 0 3px 12px rgba(21,101,192,.12);
+		transform: translateY(-1px);
+	}
+	.btn-edit svg { width: 15px; height: 15px; }
+
+	/* ========== CARDS ========== */
+	.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+	.card {
+		background: #fff; border-radius: 16px;
+		box-shadow: 0 1px 3px rgb(0 0 0 / .05), 0 4px 16px rgb(0 0 0 / .03);
+		overflow: hidden;
+	}
+	.card-top {
+		display: flex; align-items: center; gap: 10px;
+		padding: 16px 22px;
+		font-size: 1.0625rem; font-weight: 700; color: #fff;
+	}
+	.card-top svg { width: 22px; height: 22px; }
+	.card-top span { flex: 1; }
+	.card-top.blue { background: linear-gradient(135deg, #1565c0, #1976d2, #2196f3); }
+	.card-top.green { background: linear-gradient(135deg, #00695c, #00897b, #009688); }
+
+	.card-body { padding: 20px; }
+
+	.ro-note {
+		margin: 16px 0 0; padding: 10px 14px; border-radius: 8px;
+		background: #f5f7fa; font-size: .75rem; color: #90a4ae;
+		text-align: center; line-height: 1.5;
+	}
+
+	/* info table */
+	.info-table { width: 100%; border-collapse: collapse; }
+	.info-table tr + tr td { border-top: 1px solid #f0f2f5; }
+	.info-table td { padding: 11px 0; font-size: .8125rem; vertical-align: baseline; }
+	.info-table td:first-child { color: #78909c; width: 40%; padding-right: 12px; }
+	.info-table td:last-child { font-weight: 500; color: #263238; text-align: right; }
+	.info-table .mono { font-family: 'SF Mono', 'Cascadia Code', monospace; letter-spacing: .5px; }
+
+	/* form */
+	.f-grid { display: flex; flex-direction: column; gap: 14px; }
+	.f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+	.f { display: flex; flex-direction: column; gap: 4px; }
+	.f label { font-size: .8125rem; font-weight: 500; color: #546e7a; }
+	.f input {
 		padding: 9px 14px; border-radius: 10px;
-		border: 1px solid oklch(0.82 0.015 180);
-		font-family: 'Noto Sans Thai', sans-serif; font-size: 0.875rem;
-		color: oklch(0.25 0.02 180); background: oklch(0.995 0.002 180);
-		transition: border-color 0.15s ease, box-shadow 0.15s ease;
+		border: 1.5px solid #cfd8dc;
+		font-family: inherit; font-size: .875rem;
+		color: #263238; background: #fafbfc;
+		transition: border-color .15s, box-shadow .15s;
 	}
-	.field-input:focus { outline: none; border-color: oklch(0.52 0.14 240); box-shadow: 0 0 0 3px oklch(0.52 0.14 240 / 0.1); }
-	.field-input.field-readonly { background: oklch(0.96 0.003 180); color: oklch(0.5 0.02 180); cursor: not-allowed; }
-	.field-hint { margin: 4px 0 0 0; font-size: 0.6875rem; color: oklch(0.55 0.02 180); }
+	.f input:focus { outline: none; border-color: #1976d2; box-shadow: 0 0 0 3px rgba(25,118,210,.1); }
+	.f input.ro { background: #eceff1; color: #90a4ae; cursor: not-allowed; }
+	.f small { font-size: .6875rem; color: #90a4ae; }
 
-	.form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-	.btn-cancel {
-		padding: 8px 16px; border-radius: 8px; border: none;
-		background: none; color: oklch(0.5 0.02 180); font-size: 0.8125rem;
-		font-weight: 500; cursor: pointer; font-family: 'Noto Sans Thai', sans-serif;
+	.f-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+	.btn-ghost {
+		padding: 8px 18px; border-radius: 8px; border: none;
+		background: none; color: #78909c;
+		font-size: .8125rem; font-weight: 500;
+		cursor: pointer; font-family: inherit;
 	}
-	.btn-cancel:hover { background: oklch(0.95 0.005 180); }
-	.btn-save {
-		padding: 8px 20px; border-radius: 8px; border: none;
-		background: oklch(0.52 0.14 240); color: oklch(0.98 0.005 180);
-		font-size: 0.8125rem; font-weight: 500; cursor: pointer;
-		font-family: 'Noto Sans Thai', sans-serif;
+	.btn-ghost:hover { background: #f5f5f5; }
+	.btn-primary {
+		padding: 8px 22px; border-radius: 8px; border: none;
+		background: linear-gradient(135deg, #1565c0, #1976d2);
+		color: #fff; font-size: .8125rem; font-weight: 600;
+		cursor: pointer; font-family: inherit;
+		box-shadow: 0 2px 8px rgba(25,118,210,.25);
+		transition: transform .15s, box-shadow .15s;
 	}
-	.btn-save:hover { opacity: 0.9; }
+	.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(25,118,210,.3); }
 
-	@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+	@keyframes fadeUp {
+		from { opacity: 0; transform: translateY(12px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
 
 	@media (max-width: 768px) {
-		.info-grid { grid-template-columns: 1fr; }
-		.avatar-section { flex-direction: column; align-items: center; text-align: center; }
-		.header-content { padding: 0 16px 20px; }
+		.hero-content { flex-direction: column; align-items: center; text-align: center; padding: 0 20px 24px; }
+		.hero-contact { margin-left: 0; align-items: center; }
+		.hero-tags { justify-content: center; }
+		.grid { grid-template-columns: 1fr; }
+		.f-row { grid-template-columns: 1fr; }
 	}
 </style>
