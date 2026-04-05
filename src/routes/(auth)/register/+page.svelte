@@ -241,8 +241,8 @@
 	}
 	.field input:focus, .pw-wrap input:focus {
 		outline: none;
-		border-color: oklch(0.46 0.14 165);
-		box-shadow: 0 0 0 3px oklch(0.46 0.14 165 / 0.08);
+		border-color: oklch(0.44 0.14 240);
+		box-shadow: 0 0 0 3px oklch(0.44 0.14 240 / 0.08);
 	}
 
 	.err {
