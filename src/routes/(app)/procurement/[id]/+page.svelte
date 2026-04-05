@@ -21,6 +21,8 @@
 		};
 	}
 
+	let showRejectForm = $state(false);
+
 	// Check if current user already approved/rejected this step
 	let hasAlreadyApproved = $derived(
 		data.currentStep
@@ -395,21 +397,47 @@
 						{@const committeeTypes = uiSchema.components.filter((c: any) => (typeof c === 'string' ? c : c.type) === 'committee_selector').map((c: any) => c.committee_type)}
 						{@const committeesMissing = committeeTypes.some((ct: string) => data.committees.filter((c: any) => c.committee_type === ct).length === 0)}
 
-						<form method="POST" action="?/advanceStep" enctype="multipart/form-data" use:enhance={handleStepComplete}>
-							<input type="hidden" name="step_data" value={'{}'} />
-							<input type="hidden" name="agency_id" value={data.document.agency_id} />
-							<input type="hidden" name="step_seq" value={data.currentStep?.step_sequence} />
+						<div class="flex items-start gap-4">
+							<form method="POST" action="?/advanceStep" enctype="multipart/form-data" use:enhance={handleStepComplete}>
+								<input type="hidden" name="step_data" value={'{}'} />
+								<input type="hidden" name="agency_id" value={data.document.agency_id} />
+								<input type="hidden" name="step_seq" value={data.currentStep?.step_sequence} />
 
-							{#if hasCommittee && committeesMissing}
-								<p class="mb-2 text-sm text-amber-600">กรุณาเพิ่มกรรมการอย่างน้อย 1 คนในแต่ละประเภทก่อนดำเนินการต่อ</p>
+								{#if hasCommittee && committeesMissing}
+									<p class="mb-2 text-sm text-amber-600">กรุณาเพิ่มกรรมการอย่างน้อย 1 คนในแต่ละประเภทก่อนดำเนินการต่อ</p>
+								{/if}
+
+								<button type="submit" disabled={hasCommittee && committeesMissing}
+									class="rounded-lg px-5 py-2.5 text-sm font-medium text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+									style="background: oklch(0.52 0.14 240);">
+									บันทึกและไปขั้นตอนถัดไป
+								</button>
+							</form>
+
+							<!-- Reject button for any step -->
+							{#if !hasAlreadyApproved}
+								<div>
+									{#if !showRejectForm}
+										<button type="button"
+											onclick={() => { showRejectForm = true; }}
+											class="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+											ปฏิเสธ
+										</button>
+									{:else}
+										<form method="POST" action="?/approve" use:enhance={handleStepComplete} class="space-y-2">
+											<input type="hidden" name="step_id" value={data.currentStep?.id} />
+											<input type="hidden" name="action" value="REJECTED" />
+											<textarea name="comment" required rows="2" placeholder="ระบุเหตุผลที่ปฏิเสธ (บังคับ)"
+												class="w-64 rounded-lg border border-red-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none"></textarea>
+											<div class="flex gap-2">
+												<button type="submit" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">ยืนยันปฏิเสธ</button>
+												<button type="button" onclick={() => { showRejectForm = false; }} class="rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-gray-100">ยกเลิก</button>
+											</div>
+										</form>
+									{/if}
+								</div>
 							{/if}
-
-							<button type="submit" disabled={hasCommittee && committeesMissing}
-								class="rounded-lg px-5 py-2.5 text-sm font-medium text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-								style="background: oklch(0.52 0.14 240);">
-								บันทึกและไปขั้นตอนถัดไป
-							</button>
-						</form>
+						</div>
 					{/if}
 				</div>
 			{/if}

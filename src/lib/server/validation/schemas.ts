@@ -354,11 +354,50 @@ export const createBankAccountSchema = z.object({
 	agency_id: positiveId,
 	bank_id: positiveId,
 	account_name: requiredString('ชื่อบัญชี').pipe(z.string().max(255)),
-	account_number: requiredString('เลขที่บัญชี').pipe(z.string().max(50)),
+	account_number: requiredString('เลขที่บัญชี').pipe(
+		z.string().max(50).refine(
+			(v) => {
+				const digits = v.replace(/[-\s]/g, '');
+				return /^\d{10,15}$/.test(digits);
+			},
+			{ message: 'เลขที่บัญชีต้องเป็นตัวเลข 10-15 หลัก (อาจมีขีดคั่นได้)' }
+		)
+	),
 	is_tax_pool: z.enum(['true', 'false']).transform((v) => v === 'true').default('false')
 });
 
 export type CreateBankAccountInput = z.infer<typeof createBankAccountSchema>;
+
+// ──────────────────────────────────────────────
+// Loans (ยืมเงิน)
+// ──────────────────────────────────────────────
+
+const loanTypes = ['TAX_POOL', 'INTER_AGENCY'] as const;
+
+export const createLoanSchema = z.object({
+	borrower_agency_id: positiveId,
+	loan_type: z.enum(loanTypes, { message: 'กรุณาเลือกประเภทการยืม' }),
+	lender_agency_id: z.coerce.number().positive().optional(),
+	source_bank_account_id: z.coerce.number().positive().optional(),
+	amount: z.coerce.number().positive({ message: 'จำนวนเงินต้องมากกว่า 0' }),
+	purpose: requiredString('วัตถุประสงค์'),
+	due_date: optionalString
+}).refine(
+	(data) => data.loan_type !== 'INTER_AGENCY' || (data.lender_agency_id && data.lender_agency_id > 0),
+	{ message: 'กรุณาเลือกหน่วยงานที่ยืม', path: ['lender_agency_id'] }
+);
+
+export type CreateLoanInput = z.infer<typeof createLoanSchema>;
+
+export const approveLoanSchema = z.object({
+	loan_id: positiveId,
+	action: z.enum(['APPROVED', 'REJECTED'], { message: 'กรุณาเลือกการกระทำ' })
+});
+
+export const repayLoanSchema = z.object({
+	loan_id: positiveId,
+	repay_amount: z.coerce.number().positive({ message: 'จำนวนเงินต้องมากกว่า 0' })
+});
 
 // ──────────────────────────────────────────────
 // Helpers

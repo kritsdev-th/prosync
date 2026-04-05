@@ -10,11 +10,12 @@ import {
 	taxTransactions,
 	agencies,
 	provinces,
-	bank
+	bank,
+	loans
 } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import { writeAuditLog } from '$lib/server/db/audit';
-import { approveDikaSchema, createBankAccountSchema, parseFormData } from '$lib/server/validation/schemas';
+import { approveDikaSchema, createBankAccountSchema, createLoanSchema, approveLoanSchema, repayLoanSchema, parseFormData } from '$lib/server/validation/schemas';
 
 interface DikaRow {
 	id: number;
@@ -63,9 +64,13 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 		agencyId = user.agency_id;
 	}
 
+	// Load all vendors (global, not agency-scoped)
+	const vendorList = await db.select().from(vendors);
+
 	let dikaList: DikaRow[] = [];
 	let accountList: BankAccountRow[] = [];
 	let taxList: typeof taxTransactions.$inferSelect[] = [];
+	let loanList: typeof loans.$inferSelect[] = [];
 
 	if (agencyId) {
 		dikaList = await db
@@ -104,17 +109,28 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 			.select()
 			.from(taxTransactions)
 			.where(eq(taxTransactions.agency_id, agencyId));
+
+		loanList = await db
+			.select()
+			.from(loans)
+			.where(or(eq(loans.borrower_agency_id, agencyId), eq(loans.lender_agency_id, agencyId)));
 	}
 
 	// Load bank list for account creation dropdown
 	const bankList = await db.select({ id: bank.id, name: bank.name, bank_code: bank.bank_code, logo_url: bank.logo_url }).from(bank);
+
+	// Load all agencies for inter-agency loan selector
+	const allAgencies = await db.select({ id: agencies.id, name: agencies.name }).from(agencies);
 
 	return {
 		user,
 		dikaVouchers: dikaList,
 		bankAccounts: accountList,
 		taxTransactions: taxList,
+		loans: loanList,
+		vendors: vendorList,
 		banks: bankList,
+		allAgencies,
 		provinces: provincesList,
 		agencies: agencyList,
 		selectedProvinceId,
@@ -236,6 +252,66 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error('Create bank account error:', err);
 			return fail(500, { success: false, errors: { account_name: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
+	},
+
+	createLoan: async ({ request, locals }) => {
+		const parsed = parseFormData(createLoanSchema, await request.formData());
+		if (!parsed.success) return fail(400, { success: false, errors: parsed.errors });
+		try {
+			const { amount, purpose, due_date, loan_type, borrower_agency_id, lender_agency_id, source_bank_account_id } = parsed.data;
+			await db.insert(loans).values({
+				borrower_agency_id,
+				loan_type,
+				lender_agency_id: lender_agency_id ?? null,
+				source_bank_account_id: source_bank_account_id ?? null,
+				amount: String(amount),
+				purpose,
+				due_date: due_date || null,
+				requested_by_user_id: (locals as any).user?.id ?? null
+			});
+			return { success: true, message: 'สร้างคำขอยืมเงินสำเร็จ' };
+		} catch (err) {
+			console.error('Create loan error:', err);
+			return fail(500, { success: false, errors: { amount: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
+	},
+
+	approveLoan: async ({ request, locals }) => {
+		const parsed = parseFormData(approveLoanSchema, await request.formData());
+		if (!parsed.success) return fail(400, { success: false, errors: parsed.errors });
+		try {
+			const { loan_id, action } = parsed.data;
+			await db.update(loans).set({
+				status: action === 'APPROVED' ? 'APPROVED' : 'REJECTED',
+				approved_by_user_id: (locals as any).user?.id ?? null,
+				approved_at: new Date()
+			}).where(eq(loans.id, loan_id));
+			return { success: true, message: action === 'APPROVED' ? 'อนุมัติการยืมเงินแล้ว' : 'ปฏิเสธการยืมเงินแล้ว' };
+		} catch (err) {
+			console.error('Approve loan error:', err);
+			return fail(500, { success: false, errors: { loan_id: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
+		}
+	},
+
+	repayLoan: async ({ request }) => {
+		const parsed = parseFormData(repayLoanSchema, await request.formData());
+		if (!parsed.success) return fail(400, { success: false, errors: parsed.errors });
+		try {
+			const { loan_id, repay_amount } = parsed.data;
+			const [loan] = await db.select().from(loans).where(eq(loans.id, loan_id));
+			if (!loan) return fail(404, { success: false, errors: { loan_id: ['ไม่พบรายการยืม'] } });
+			const newRepaid = Number(loan.repaid_amount) + repay_amount;
+			const fullyRepaid = newRepaid >= Number(loan.amount);
+			await db.update(loans).set({
+				repaid_amount: String(newRepaid),
+				status: fullyRepaid ? 'REPAID' : loan.status,
+				repaid_at: fullyRepaid ? new Date() : null
+			}).where(eq(loans.id, loan_id));
+			return { success: true, message: fullyRepaid ? 'ชำระคืนครบแล้ว' : 'บันทึกการชำระคืนแล้ว' };
+		} catch (err) {
+			console.error('Repay loan error:', err);
+			return fail(500, { success: false, errors: { loan_id: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });
 		}
 	}
 };

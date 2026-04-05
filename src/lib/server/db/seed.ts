@@ -381,23 +381,34 @@ async function seed() {
 	// ──────────────────────────────────────────
 	// 5. Banks (idempotent)
 	// ──────────────────────────────────────────
-	let banks = await db.select().from(schema.bank);
-	if (banks.length === 0) {
-		banks = await db
-			.insert(schema.bank)
-			.values([
-				{ bank_code: 'BBL', name: 'ธนาคารกรุงเทพ', logo_url: '/Bank_logo/BBL.png' },
-				{ bank_code: 'KBANK', name: 'ธนาคารกสิกรไทย', logo_url: '/Bank_logo/KBANK.png' },
-				{ bank_code: 'KTB', name: 'ธนาคารกรุงไทย', logo_url: '/Bank_logo/KTB.png' },
-				{ bank_code: 'SCB', name: 'ธนาคารไทยพาณิชย์', logo_url: '/Bank_logo/SCB.png' },
-				{ bank_code: 'TTB', name: 'ธนาคารทหารไทยธนชาต', logo_url: '/Bank_logo/TTB.png' },
-				{ bank_code: 'GSB', name: 'ธนาคารออมสิน', logo_url: '/Bank_logo/GSB.png' }
-			])
-			.returning();
-		console.log('✅ Banks seeded');
+	// All Thai banks — upsert to ensure all are present
+	const allBankData = [
+		{ bank_code: 'BBL', name: 'ธนาคารกรุงเทพ', logo_url: '/Bank_logo/BBL.png' },
+		{ bank_code: 'KBANK', name: 'ธนาคารกสิกรไทย', logo_url: '/Bank_logo/KBANK.png' },
+		{ bank_code: 'KTB', name: 'ธนาคารกรุงไทย', logo_url: '/Bank_logo/KTB.png' },
+		{ bank_code: 'SCB', name: 'ธนาคารไทยพาณิชย์', logo_url: '/Bank_logo/SCB.png' },
+		{ bank_code: 'TTB', name: 'ธนาคารทหารไทยธนชาต', logo_url: '/Bank_logo/TTB.png' },
+		{ bank_code: 'BAY', name: 'ธนาคารกรุงศรีอยุธยา', logo_url: '/Bank_logo/BAY.png' },
+		{ bank_code: 'KKP', name: 'ธนาคารเกียรตินาคินภัทร', logo_url: '/Bank_logo/KKP.png' },
+		{ bank_code: 'CIMBT', name: 'ธนาคารซีไอเอ็มบีไทย', logo_url: '/Bank_logo/CIMBT.png' },
+		{ bank_code: 'TISCO', name: 'ธนาคารทิสโก้', logo_url: '/Bank_logo/TISCO.png' },
+		{ bank_code: 'UOBT', name: 'ธนาคารยูโอบี', logo_url: '/Bank_logo/UOBT.png' },
+		{ bank_code: 'LHFG', name: 'ธนาคารแลนด์ แอนด์ เฮ้าส์', logo_url: '/Bank_logo/LHFG.png' },
+		{ bank_code: 'ICBCT', name: 'ธนาคารไอซีบีซี (ไทย)', logo_url: '/Bank_logo/ICBCT.png' },
+		{ bank_code: 'GSB', name: 'ธนาคารออมสิน', logo_url: '/Bank_logo/GSB.png' },
+		{ bank_code: 'BAAC', name: 'ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร', logo_url: '/Bank_logo/BAAC.png' },
+		{ bank_code: 'GHB', name: 'ธนาคารอาคารสงเคราะห์', logo_url: '/Bank_logo/GHB.png' },
+	];
+	const existingBanks = await db.select().from(schema.bank);
+	const existingCodes = new Set(existingBanks.map((b) => b.bank_code));
+	const missingBanks = allBankData.filter((b) => !existingCodes.has(b.bank_code));
+	if (missingBanks.length > 0) {
+		await db.insert(schema.bank).values(missingBanks);
+		console.log(`✅ Banks: inserted ${missingBanks.length} missing (total ${existingBanks.length + missingBanks.length})`);
 	} else {
-		console.log('ℹ️  Banks already exist');
+		console.log(`ℹ️  Banks: all ${existingBanks.length} present`);
 	}
+	let banks = await db.select().from(schema.bank);
 
 	// ──────────────────────────────────────────
 	// 6. Workflows (idempotent) — 4 central + 15-step วิธีเฉพาะเจาะจง

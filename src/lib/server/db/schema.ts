@@ -364,3 +364,27 @@ export const taxTransactions = pgTable('tax_transactions', {
 	tax_form_type: varchar('tax_form_type', { length: 50 }),
 	status: varchar('status', { length: 50 }).notNull().default('WITHHELD')
 });
+
+// ──────────────────────────────────────────────
+// Loans (ยืมเงิน)
+// ──────────────────────────────────────────────
+
+export const loans = pgTable('loans', {
+	id: serial('id').primaryKey(),
+	borrower_agency_id: integer('borrower_agency_id')
+		.notNull()
+		.references(() => agencies.id),
+	loan_type: varchar('loan_type', { length: 50 }).notNull(), // 'TAX_POOL' | 'INTER_AGENCY'
+	lender_agency_id: integer('lender_agency_id').references(() => agencies.id), // null for TAX_POOL
+	source_bank_account_id: integer('source_bank_account_id').references(() => bankAccounts.id), // tax pool account
+	amount: numeric('amount', { precision: 15, scale: 2 }).notNull(),
+	repaid_amount: numeric('repaid_amount', { precision: 15, scale: 2 }).notNull().default('0'),
+	purpose: text('purpose').notNull(),
+	due_date: date('due_date'),
+	status: varchar('status', { length: 50 }).notNull().default('PENDING'), // PENDING | APPROVED | REPAID | OVERDUE | REJECTED
+	requested_by_user_id: integer('requested_by_user_id').references(() => users.id),
+	approved_by_user_id: integer('approved_by_user_id').references(() => users.id),
+	created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	approved_at: timestamp('approved_at', { withTimezone: true }),
+	repaid_at: timestamp('repaid_at', { withTimezone: true })
+});
