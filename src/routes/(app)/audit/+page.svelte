@@ -39,7 +39,15 @@
 	const ACTION_STYLES: Record<string, { bg: string; color: string; label: string }> = {
 		CREATE: { bg: 'oklch(0.54 0.16 150 / 0.1)', color: 'oklch(0.38 0.14 150)', label: 'สร้าง' },
 		UPDATE: { bg: 'oklch(0.52 0.14 240 / 0.1)', color: 'oklch(0.42 0.12 240)', label: 'แก้ไข' },
-		DELETE: { bg: 'oklch(0.58 0.2 25 / 0.1)', color: 'oklch(0.45 0.18 25)', label: 'ลบ' }
+		DELETE: { bg: 'oklch(0.58 0.2 25 / 0.1)', color: 'oklch(0.45 0.18 25)', label: 'ลบ' },
+		STEP_ADVANCE: { bg: 'oklch(0.52 0.14 240 / 0.1)', color: 'oklch(0.42 0.12 240)', label: 'ดำเนินขั้นตอน' },
+		STEP_APPROVED: { bg: 'oklch(0.54 0.16 150 / 0.1)', color: 'oklch(0.38 0.14 150)', label: 'อนุมัติขั้นตอน' },
+		STEP_REJECTED: { bg: 'oklch(0.58 0.2 25 / 0.1)', color: 'oklch(0.45 0.18 25)', label: 'ปฏิเสธขั้นตอน' },
+		GENERATE_DIKA: { bg: 'oklch(0.45 0.1 280 / 0.1)', color: 'oklch(0.40 0.1 280)', label: 'สร้างฎีกา' },
+		DIKA_EXAMINED: { bg: 'oklch(0.62 0.18 60 / 0.1)', color: 'oklch(0.48 0.14 60)', label: 'ตรวจสอบฎีกา' },
+		DIKA_APPROVED: { bg: 'oklch(0.54 0.16 150 / 0.1)', color: 'oklch(0.38 0.14 150)', label: 'อนุมัติฎีกา' },
+		DIKA_REJECTED: { bg: 'oklch(0.58 0.2 25 / 0.1)', color: 'oklch(0.45 0.18 25)', label: 'ปฏิเสธฎีกา' },
+		SYSTEM_SETTLE: { bg: 'oklch(0.54 0.16 150 / 0.1)', color: 'oklch(0.38 0.14 150)', label: 'จ่ายเงิน/ตัดบัญชี' }
 	};
 
 	let filteredRecords = $derived.by(() => {
@@ -212,7 +220,32 @@
 
 					{#if expandedId === record._id}
 						<div class="record-detail">
-							<pre class="detail-json">{JSON.stringify(record, null, 2)}</pre>
+							<!-- Structured summary -->
+							<div class="detail-summary">
+								{#if record.document_id}
+									<div class="detail-item"><span class="detail-key">เอกสาร</span><span class="detail-val">#{record.document_id}</span></div>
+								{/if}
+								{#if record.step_name}
+									<div class="detail-item"><span class="detail-key">ขั้นตอน</span><span class="detail-val">{record.step_name}</span></div>
+								{/if}
+								{#if record.dika_voucher_id}
+									<div class="detail-item"><span class="detail-key">ฎีกา</span><span class="detail-val">#{record.dika_voucher_id}</span></div>
+								{/if}
+								{#if record.net_amount}
+									<div class="detail-item"><span class="detail-key">ยอดสุทธิ</span><span class="detail-val">{Number(record.net_amount).toLocaleString('th-TH')} บาท</span></div>
+								{/if}
+								{#if record.comment}
+									<div class="detail-item"><span class="detail-key">หมายเหตุ</span><span class="detail-val">{record.comment}</span></div>
+								{/if}
+								{#if record.amount_change}
+									<div class="detail-item"><span class="detail-key">จำนวนเงิน</span><span class="detail-val">{Number((record.amount_change as any)?.['new'] || 0).toLocaleString('th-TH')} บาท</span></div>
+								{/if}
+							</div>
+							<!-- Raw JSON toggle -->
+							<details class="mt-2">
+								<summary class="cursor-pointer text-xs text-gray-400 hover:text-gray-600 select-none">ดู JSON ทั้งหมด</summary>
+								<pre class="detail-json">{JSON.stringify(record, null, 2)}</pre>
+							</details>
 						</div>
 					{/if}
 				</div>
@@ -292,7 +325,11 @@
 	.expand-icon.expanded { transform: rotate(180deg); }
 
 	.record-detail { border-top: 1px solid oklch(0.92 0.005 180); padding: 16px 18px; animation: slide-down 0.2s ease; }
-	.detail-json { margin: 0; padding: 14px; border-radius: 10px; background: oklch(0.97 0.005 180); font-size: 0.75rem; color: oklch(0.35 0.02 180); overflow-x: auto; font-family: 'Fira Code', monospace; line-height: 1.5; }
+	.detail-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 8px; }
+	.detail-item { display: flex; align-items: center; gap: 6px; font-size: 0.8125rem; }
+	.detail-key { color: oklch(0.5 0.02 180); font-weight: 500; }
+	.detail-val { color: oklch(0.25 0.02 180); font-weight: 600; }
+	.detail-json { margin: 0; padding: 14px; border-radius: 10px; background: oklch(0.97 0.005 180); font-size: 0.75rem; color: oklch(0.35 0.02 180); overflow-x: auto; font-family: 'Fira Code', monospace; line-height: 1.5; max-height: 300px; }
 
 	.empty-records { text-align: center; padding: 48px 24px; font-size: 0.9375rem; color: oklch(0.55 0.02 180); background: oklch(0.98 0.005 180); border: 1px solid oklch(0.92 0.005 180); border-radius: 14px; }
 

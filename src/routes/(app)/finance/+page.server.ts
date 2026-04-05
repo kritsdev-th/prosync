@@ -225,7 +225,16 @@ export const actions: Actions = {
 						notificationType: 'APPROVAL_REQUIRED'
 					});
 				}
-				return { success: true, message: 'ตรวจสอบฎีกาสำเร็จ — ส่งต่อรออนุมัติ' };
+				await writeAuditLog({
+						collection: 'bank_transaction_histories',
+						action_type: 'DIKA_EXAMINED',
+						agency_id: dika.agency_id,
+						dika_voucher_id: dika_id,
+						document_id: dika.document_id,
+						net_amount: dika.net_amount,
+						action_by: { user_id: locals.user!.sub, name: locals.user!.name, ip_address: getClientAddress() }
+					});
+					return { success: true, message: 'ตรวจสอบฎีกาสำเร็จ — ส่งต่อรออนุมัติ' };
 			}
 
 			// ขั้นตอนที่ 3: อนุมัติการเบิกจ่าย
@@ -246,7 +255,16 @@ export const actions: Actions = {
 						notificationType: 'APPROVAL_REQUIRED'
 					});
 				}
-				return { success: true, message: 'อนุมัติการเบิกจ่ายสำเร็จ — ส่งต่อรอจ่ายเงิน' };
+				await writeAuditLog({
+						collection: 'bank_transaction_histories',
+						action_type: 'DIKA_APPROVED',
+						agency_id: dika.agency_id,
+						dika_voucher_id: dika_id,
+						document_id: dika.document_id,
+						net_amount: dika.net_amount,
+						action_by: { user_id: locals.user!.sub, name: locals.user!.name, ip_address: getClientAddress() }
+					});
+					return { success: true, message: 'อนุมัติการเบิกจ่ายสำเร็จ — ส่งต่อรอจ่ายเงิน' };
 			}
 
 			// ขั้นตอนที่ 4: จ่ายเงิน หักภาษี ตัดบัญชี
@@ -360,7 +378,17 @@ export const actions: Actions = {
 					}
 				}
 
-				return { success: true, message: 'ปฏิเสธฎีกาแล้ว' };
+				await writeAuditLog({
+						collection: 'bank_transaction_histories',
+						action_type: 'DIKA_REJECTED',
+						agency_id: dika.agency_id,
+						dika_voucher_id: dika_id,
+						document_id: dika.document_id,
+						net_amount: dika.net_amount,
+						action_by: { user_id: locals.user!.sub, name: locals.user!.name, ip_address: getClientAddress() }
+					});
+
+					return { success: true, message: 'ปฏิเสธฎีกาแล้ว' };
 			}
 		} catch (err) {
 			console.error('Approve dika error:', err);

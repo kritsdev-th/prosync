@@ -196,9 +196,43 @@ export const actions: Actions = {
 			if (!currentStep) return fail(400, { success: false, errors: { step: ['ไม่พบขั้นตอนปัจจุบัน'] } });
 
 			const stepKey = `step_${currentStep.step_sequence}_${currentStep.step_name.replace(/\s+/g, '_').substring(0, 30)}`;
+
+			// Build rich payload based on step type
+			const uiType = (currentStep.ui_schema as any)?.type || 'unknown';
+			const stepPayload: Record<string, unknown> = { ...parsedData };
+
+			// Add uploaded PDF info
+			if (stepPayload.uploaded_pdf) {
+				stepPayload._meta = `อัปโหลดเอกสารสำเร็จ`;
+			}
+
+			// Add committee info
+			if (uiType === 'committee') {
+				const comps = (currentStep.ui_schema as any)?.components || [];
+				const types = comps.filter((c: any) => c?.committee_type).map((c: any) => c.committee_type);
+				if (types.length > 0) {
+					stepPayload._meta = `บันทึกกรรมการประเภท ${types.join(' และ ')} ลงตาราง document_committees แล้ว`;
+				}
+			}
+
+			// Add vendor proposal info
+			if (uiType === 'vendor_proposal_with_upload') {
+				stepPayload._meta = 'เอกสารใบเสนอราคาจาก Vendor ถูกบันทึกลงตาราง document_bidders แล้ว';
+			}
+
+			// Add evaluation info
+			if (uiType === 'evaluation_with_scoring') {
+				stepPayload._meta = 'คะแนนของผู้ยื่นซองแต่ละรายและสถานะผู้ชนะ ถูกอัปเดตลงในตาราง document_bidders แล้ว';
+			}
+
+			// Always add who/when
+			stepPayload.completed_by = locals.user?.sub || null;
+			stepPayload.completed_by_name = locals.user?.name || null;
+			stepPayload.completed_at = new Date().toISOString();
+
 			const updatedPayload = {
 				...(doc.payload as Record<string, unknown>),
-				[stepKey]: parsedData
+				[stepKey]: stepPayload
 			};
 
 			const nextStep = steps.find((s) => s.step_sequence === currentStep.step_sequence + 1);
@@ -323,7 +357,7 @@ export const actions: Actions = {
 		}
 	},
 
-	approve: async ({ request, params, locals }) => {
+	approve: async ({ request, params, locals, getClientAddress }) => {
 		const parsed = parseFormData(approveSchema, await request.formData());
 		if (!parsed.success) {
 			return fail(400, { success: false, errors: parsed.errors });
@@ -400,7 +434,16 @@ export const actions: Actions = {
 					const stepKey = `step_${currentStep.step_sequence}_${currentStep.step_name.replace(/\s+/g, '_').substring(0, 30)}`;
 					const updatedPayload = {
 						...(doc.payload as Record<string, unknown>),
-						[stepKey]: { approved: true, approved_by: locals.user!.sub, approved_by_name: locals.user!.name, approved_at: new Date().toISOString(), comment: comment ?? null }
+						[stepKey]: {
+							_meta: 'ผู้มีอำนาจกดอนุมัติแล้ว ข้อมูลถูกบันทึกลงตาราง approvals',
+							approver: {
+								user_id: locals.user!.sub,
+								name: locals.user!.name,
+								position: locals.user!.position_rank || null,
+								approved_at: new Date().toISOString()
+							},
+							comment: comment ?? null
+						}
 					};
 
 					await db
@@ -420,6 +463,25 @@ export const actions: Actions = {
 				}
 			}
 
+			// Write audit log for approve/reject
+			if (locals.user) {
+				const [stepForAudit] = await db.select({ step_name: workflowSteps.step_name }).from(workflowSteps).where(eq(workflowSteps.id, step_id));
+				await writeAuditLog({
+					collection: 'doc_payload_histories',
+					action_type: action === 'APPROVED' ? 'STEP_APPROVED' : 'STEP_REJECTED',
+					agency_id: doc.agency_id,
+					document_id: docId,
+					step_id,
+					step_name: stepForAudit?.step_name || '',
+					comment: comment ?? null,
+					action_by: {
+						user_id: locals.user.sub,
+						name: locals.user.name,
+						ip_address: getClientAddress()
+					}
+				});
+			}
+
 			return { success: true, message: action === 'APPROVED' ? 'อนุมัติสำเร็จ — ส่งต่อขั้นตอนถัดไปแล้ว' : 'ปฏิเสธแล้ว' };
 		} catch (err) {
 			console.error('Approve error:', err);
@@ -427,7 +489,7 @@ export const actions: Actions = {
 		}
 	},
 
-	generateDika: async ({ request, params, locals }) => {
+	generateDika: async ({ request, params, locals, getClientAddress }) => {
 		const parsed = parseFormData(generateDikaSchema, await request.formData());
 		if (!parsed.success) {
 			return fail(400, { success: false, errors: parsed.errors });
@@ -464,6 +526,22 @@ export const actions: Actions = {
 				net_amount: net.toFixed(2),
 				status: 'PENDING_EXAMINE'
 			});
+
+			// Write audit log
+			if (locals.user) {
+				await writeAuditLog({
+					collection: 'doc_payload_histories',
+					action_type: 'GENERATE_DIKA',
+					agency_id: doc.agency_id,
+					document_id: docId,
+					dika_data: { gross_amount, fine_amount, tax_amount, net_amount: net.toFixed(2), vendor_id: winner.vendor_id },
+					action_by: {
+						user_id: locals.user.sub,
+						name: locals.user.name,
+						ip_address: getClientAddress()
+					}
+				});
+			}
 
 			return { success: true, message: 'สร้างฎีกาเบิกจ่ายสำเร็จ' };
 		} catch (err) {

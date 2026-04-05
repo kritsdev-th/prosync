@@ -10,7 +10,8 @@
       "Bash(grep -rn \"favicon\\\\|icon\" /c/Users/krits/Desktop/prosync/src --include=*.ts --include=*.js --include=*.html)",
       "Bash(ls:*)",
       "Bash(grep -rn \"src=\\\\|href=.*\\\\.\\\\\\(png\\\\|jpg\\\\|jpeg\\\\|svg\\\\|webp\\\\|gif\\\\\\)\" /c/Users/krits/Desktop/prosync/src --include=*.svelte)",
-      "Bash(grep -rn \"img\\\\|image\\\\|Image\" /c/Users/krits/Desktop/prosync/src --include=*.svelte --include=*.ts)"
+      "Bash(grep -rn \"img\\\\|image\\\\|Image\" /c/Users/krits/Desktop/prosync/src --include=*.svelte --include=*.ts)",
+      "Bash(docker exec prosync-mongodb-1 mongosh erp_audit_db --eval ':*)"
     ]
   }
 }

@@ -27,6 +27,7 @@
 	}
 
 	let showRejectForm = $state(false);
+	let rejectError = $state('');
 
 	// Check if current user already approved/rejected this step
 	let hasAlreadyApproved = $derived(
@@ -290,11 +291,30 @@
 										คุณได้อนุมัติ/ตรวจสอบขั้นตอนนี้ไปแล้ว
 									</div>
 								{:else}
-									<form method="POST" action="?/approve" use:enhance={handleStepComplete} class="mt-4 space-y-3">
+									<form method="POST" action="?/approve" use:enhance={handleStepComplete} class="mt-4 space-y-3"
+										onsubmit={(e: SubmitEvent) => {
+											const btn = (e.submitter as HTMLButtonElement);
+											if (btn?.value === 'REJECTED') {
+												const comment = (e.currentTarget as HTMLFormElement).querySelector<HTMLTextAreaElement>('[name="comment"]');
+												if (!comment?.value.trim()) {
+													e.preventDefault();
+													rejectError = 'กรุณาระบุเหตุผลที่ปฏิเสธ';
+													comment?.focus();
+													return;
+												}
+											}
+											rejectError = '';
+										}}>
 										<input type="hidden" name="step_id" value={data.currentStep?.id} />
 										<div>
 											<label for="approval-comment" class="block text-sm font-medium text-gray-700">หมายเหตุ</label>
-											<textarea id="approval-comment" name="comment" placeholder="หมายเหตุ (บังคับเมื่อปฏิเสธ)" rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+											<textarea id="approval-comment" name="comment" placeholder="หมายเหตุ (บังคับเมื่อปฏิเสธ)" rows="2"
+												class="mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none"
+												style="border-color: {rejectError ? 'oklch(0.58 0.2 25)' : 'oklch(0.82 0.015 180)'}; {rejectError ? 'box-shadow: 0 0 0 2px oklch(0.58 0.2 25 / 0.2);' : ''}"
+												oninput={() => { rejectError = ''; }}></textarea>
+											{#if rejectError}
+												<p class="mt-1 text-xs text-red-600">{rejectError}</p>
+											{/if}
 										</div>
 										<div class="flex gap-2">
 											<button type="submit" name="action" value="APPROVED" class="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">อนุมัติ</button>
@@ -427,14 +447,29 @@
 											ปฏิเสธ
 										</button>
 									{:else}
-										<form method="POST" action="?/approve" use:enhance={handleStepComplete} class="space-y-2">
+										<form method="POST" action="?/approve" use:enhance={handleStepComplete} class="space-y-2"
+											onsubmit={(e: SubmitEvent) => {
+												const comment = (e.currentTarget as HTMLFormElement).querySelector<HTMLTextAreaElement>('[name="comment"]');
+												if (!comment?.value.trim()) {
+													e.preventDefault();
+													rejectError = 'กรุณาระบุเหตุผลที่ปฏิเสธ';
+													comment?.focus();
+													return;
+												}
+												rejectError = '';
+											}}>
 											<input type="hidden" name="step_id" value={data.currentStep?.id} />
 											<input type="hidden" name="action" value="REJECTED" />
-											<textarea name="comment" required rows="2" placeholder="ระบุเหตุผลที่ปฏิเสธ (บังคับ)"
-												class="w-64 rounded-lg border border-red-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none"></textarea>
+											<textarea name="comment" rows="2" placeholder="ระบุเหตุผลที่ปฏิเสธ (บังคับ)"
+												class="w-64 rounded-lg border px-3 py-2 text-sm outline-none"
+												style="border-color: {rejectError ? 'oklch(0.58 0.2 25)' : 'oklch(0.75 0.1 25)'}; {rejectError ? 'box-shadow: 0 0 0 2px oklch(0.58 0.2 25 / 0.2);' : ''}"
+												oninput={() => { rejectError = ''; }}></textarea>
+											{#if rejectError}
+												<p class="text-xs text-red-600">{rejectError}</p>
+											{/if}
 											<div class="flex gap-2">
 												<button type="submit" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">ยืนยันปฏิเสธ</button>
-												<button type="button" onclick={() => { showRejectForm = false; }} class="rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-gray-100">ยกเลิก</button>
+												<button type="button" onclick={() => { showRejectForm = false; rejectError = ''; }} class="rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-gray-100">ยกเลิก</button>
 											</div>
 										</form>
 									{/if}
@@ -467,31 +502,58 @@
 	{/if}
 
 	<!-- Step History from Payload -->
-	{#each [Object.entries((data.document.payload as Record<string, any>) || {}).filter(([k]) => k.startsWith('step_'))] as stepEntries}
+	{#each [Object.entries((data.document.payload as Record<string, any>) || {}).filter(([k]) => k.startsWith('step_')).sort(([a], [b]) => { const na = parseInt(a.match(/^step_(\d+)/)?.[1] || '0'); const nb = parseInt(b.match(/^step_(\d+)/)?.[1] || '0'); return na - nb; })] as stepEntries}
 	{#if stepEntries.length > 0}
 		<div class="mt-6 rounded-xl border bg-white p-6">
 			<h2 class="text-lg font-bold text-gray-900">ประวัติการดำเนินการ</h2>
 			<div class="mt-3 space-y-3">
 				{#each stepEntries as [key, value]}
+					{@const stepSeq = key.match(/^step_(\d+)/)?.[1] || '?'}
 					{@const stepName = key.replace(/^step_\d+_/, '').replace(/_/g, ' ')}
+					{@const hasApprover = value?.approver?.name}
 					<div class="rounded-lg border p-3">
 						<div class="flex items-center gap-2">
-							<span class="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">ผ่านแล้ว</span>
+							{#if hasApprover}
+								<span class="rounded px-2 py-0.5 text-xs font-medium" style="background: oklch(0.54 0.16 150 / 0.1); color: oklch(0.38 0.14 150);">อนุมัติ</span>
+							{:else if value?.completed_by_name}
+								<span class="rounded px-2 py-0.5 text-xs font-medium" style="background: oklch(0.52 0.14 240 / 0.1); color: oklch(0.42 0.12 240);">ดำเนินการ</span>
+							{:else}
+								<span class="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">ผ่านแล้ว</span>
+							{/if}
+							<span class="text-xs font-mono text-gray-400">#{stepSeq}</span>
 							<span class="text-sm font-medium text-gray-800">{stepName}</span>
 						</div>
 						{#if value && typeof value === 'object'}
 							<div class="mt-2 text-xs text-gray-500 space-y-0.5">
-								{#if value.approved}
-									<p>อนุมัติโดย: {value.approved_by_name || data.users.find((u: any) => u.id === value.approved_by)?.name || `User #${value.approved_by}`}</p>
+								<!-- Approver info (new nested format) -->
+								{#if hasApprover}
+									<p>โดย: <span class="font-medium text-gray-700">{value.approver.name}</span>
+										{#if value.approver.position}<span class="text-gray-400"> ({value.approver.position})</span>{/if}
+									</p>
+									{#if value.approver.approved_at}
+										<p>เมื่อ: {new Date(value.approver.approved_at).toLocaleString('th-TH')}</p>
+									{/if}
+								{:else if value.completed_by_name}
+									<!-- Regular step completed -->
+									<p>โดย: <span class="font-medium text-gray-700">{value.completed_by_name}</span></p>
+									{#if value.completed_at}
+										<p>เมื่อ: {new Date(value.completed_at).toLocaleString('th-TH')}</p>
+									{/if}
 								{/if}
-								{#if value.approved_at}
-									<p>เมื่อ: {new Date(value.approved_at).toLocaleString('th-TH')}</p>
+								<!-- Meta description -->
+								{#if value._meta}
+									<p class="italic" style="color: oklch(0.5 0.06 240);">{value._meta}</p>
 								{/if}
+								<!-- Comment -->
 								{#if value.comment}
-									<p>หมายเหตุ: {value.comment}</p>
+									<p>หมายเหตุ: <span class="italic">{value.comment}</span></p>
 								{/if}
-								{#if value.completed}
-									<p>ดำเนินการเสร็จสิ้น</p>
+								<!-- Uploaded PDF -->
+								{#if value.uploaded_pdf}
+									<a href={value.uploaded_pdf} target="_blank" class="inline-flex items-center gap-1 text-blue-600 hover:underline mt-1">
+										<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+										{value.uploaded_filename || 'ดูไฟล์ PDF'}
+									</a>
 								{/if}
 							</div>
 						{/if}
@@ -501,6 +563,16 @@
 		</div>
 	{/if}
 	{/each}
+
+	<!-- Raw Payload Viewer (collapsible) -->
+	<details class="mt-6 rounded-xl border bg-white">
+		<summary class="cursor-pointer px-6 py-4 text-sm font-bold text-gray-900 select-none hover:bg-gray-50">
+			ดู Payload (JSON) ทั้งหมด
+		</summary>
+		<div class="border-t px-6 py-4">
+			<pre class="max-h-96 overflow-auto rounded-lg bg-gray-50 p-4 text-xs text-gray-700 font-mono whitespace-pre-wrap">{JSON.stringify(data.document.payload, null, 2)}</pre>
+		</div>
+	</details>
 </div>
 
 <style>
