@@ -63,13 +63,9 @@
 	});
 
 	// Fiscal year filtered data (dika, tax, loans)
-	// ผอ./รองผอ. เห็นเฉพาะงานที่ตนเองรับผิดชอบ (EXAMINED) ไม่ใช่ทุกงาน
+	// ตารางแสดงฎีกาทุกสถานะ — "งานของฉัน" จะกรองเฉพาะที่ตนรับผิดชอบแยกต่างหาก
 	let fyFilteredDika = $derived.by(() => {
-		let list = selectedFyId ? data.dikaVouchers.filter((d: any) => d.fiscal_year_id === selectedFyId) : data.dikaVouchers;
-		if (isDirectorOnly) {
-			list = list.filter((d: any) => d.status === 'EXAMINED');
-		}
-		return list;
+		return selectedFyId ? data.dikaVouchers.filter((d: any) => d.fiscal_year_id === selectedFyId) : data.dikaVouchers;
 	});
 	let fyFilteredTax = $derived(
 		selectedFyId ? data.taxTransactions.filter((t: any) => t.fiscal_year_id === selectedFyId) : data.taxTransactions
