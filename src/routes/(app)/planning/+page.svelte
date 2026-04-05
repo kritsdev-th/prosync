@@ -310,7 +310,7 @@
 {/snippet}
 
 <div>
-	<PageHeader title="แผนยุทธศาสตร์" subtitle="จัดการแผนงาน งบประมาณ และติดตามผลการดำเนินงาน" />
+	<PageHeader title="แผนยุทธศาสตร์" subtitle="จัดการแผนงาน งบประมาณ และติดตามผลการดำเนินงาน" compact />
 
 	<!-- Compact Header -->
 	<div class="shrink-0">
@@ -323,7 +323,7 @@
 					options={data.provinces.map((p) => ({ value: String(p.id), label: p.name }))}
 					placeholder="-- จังหวัด --"
 					onchange={(v) => goto(v ? `/planning?province_id=${v}` : '/planning')}
-					class="shrink-0"
+					class="shrink-0 max-w-[10rem]"
 				/>
 				<CustomSelect
 					value={data.selectedAgencyId ? String(data.selectedAgencyId) : ''}
@@ -331,7 +331,7 @@
 					placeholder={data.selectedProvinceId && data.agencies.length === 0 ? '-- ไม่มีหน่วยงาน --' : '-- หน่วยงาน --'}
 					disabled={!data.selectedProvinceId}
 					onchange={(v) => { if (v && data.selectedProvinceId) goto(`/planning?province_id=${data.selectedProvinceId}&agency_id=${v}`); }}
-					class="shrink-0"
+					class="shrink-0 max-w-[12rem]"
 				/>
 			{/if}
 
@@ -429,8 +429,8 @@
 		</div>
 	</div>
 
-	<!-- Plan Tree: scrollable area -->
-	<div class="mt-2 overflow-y-auto rounded-lg" style="max-height: calc(100vh - 22rem); border: 1px solid var(--color-slate-100); background: white; scrollbar-width: thin; scrollbar-color: var(--color-slate-300) transparent">
+	<!-- Plan Tree: full viewport height minus navbar -->
+	<div class="mt-1.5 overflow-y-auto rounded-lg" style="height: calc(100vh - 5rem); border: 1px solid var(--color-slate-100); background: white; scrollbar-width: thin; scrollbar-color: var(--color-slate-300) transparent">
 		<div class="p-4">
 			{#if tree.length === 0}
 				<div class="py-16 text-center" style="color: var(--color-slate-400)">
