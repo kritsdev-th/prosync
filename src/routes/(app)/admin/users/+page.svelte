@@ -5,8 +5,11 @@
 	import BackButton from '$lib/components/BackButton.svelte';
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { exportToCsv } from '$lib/utils/format';
+	import { watchFormResult } from '$lib/stores/toast.svelte';
 
 	let { data, form } = $props();
+
+	watchFormResult(() => form);
 	let searchQuery = $state(data.search || '');
 	let showCreateModal = $state(false);
 	let editingUser = $state<any>(null);
@@ -73,9 +76,7 @@
 		</form>
 	</div>
 
-	{#if form?.message}
-		<div class="mt-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700">{form.message}</div>
-	{/if}
+	<!-- Toast notifications handled by global Toast component -->
 
 	<!-- Users Table -->
 	<div class="mt-4 overflow-hidden rounded-xl border bg-white shadow-sm">

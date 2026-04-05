@@ -285,9 +285,11 @@ export async function getPendingFinanceCount(userId: number, agencyId: number | 
 	const statuses: string[] = [];
 	if (isSuperAdmin) {
 		statuses.push('PENDING_EXAMINE', 'EXAMINED', 'APPROVED');
+	} else if (isDirector) {
+		// ผอ./รองผอ. เห็นเฉพาะ EXAMINED (รออนุมัติ) เท่านั้น
+		statuses.push('EXAMINED');
 	} else {
 		if (canManageFinance) statuses.push('PENDING_EXAMINE', 'APPROVED');
-		if (isDirector) statuses.push('EXAMINED');
 	}
 
 	if (statuses.length === 0) return 0;

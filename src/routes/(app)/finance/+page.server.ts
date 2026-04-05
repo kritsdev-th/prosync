@@ -16,7 +16,7 @@ import {
 } from '$lib/server/db/schema';
 import { eq, or, and, isNull } from 'drizzle-orm';
 import { writeAuditLog } from '$lib/server/db/audit';
-import { createNotification } from '$lib/server/notifications';
+import { createNotification, markReadByDocument } from '$lib/server/notifications';
 import { users, orgUnits, documents } from '$lib/server/db/schema';
 import { approveDikaSchema, createBankAccountSchema, createLoanSchema, approveLoanSchema, repayLoanSchema, parseFormData } from '$lib/server/validation/schemas';
 
@@ -201,6 +201,11 @@ export const actions: Actions = {
 				const finUnit = units.find((u) => u.name.includes('การเงิน') || u.name.includes('คลัง'));
 				return finUnit?.head_of_unit_id || null;
 			};
+
+			// Mark current user's notifications for this document as read
+			if (dika.document_id) {
+				await markReadByDocument(locals.user!.sub, dika.document_id);
+			}
 
 			// ขั้นตอนที่ 2: ตรวจสอบฎีกาและเอกสารประกอบ
 			if (action === 'examine') {

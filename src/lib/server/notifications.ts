@@ -78,3 +78,36 @@ export async function deleteReadNotifications(userId: number) {
 		.delete(notifications)
 		.where(and(eq(notifications.user_id, userId), eq(notifications.is_read, true)));
 }
+
+/**
+ * Mark all unread notifications for a user matching a specific action URL as read.
+ * Used when a user completes work from the page directly (not via the bell dropdown).
+ */
+export async function markReadByActionUrl(userId: number, actionUrl: string) {
+	return db
+		.update(notifications)
+		.set({ is_read: true })
+		.where(
+			and(
+				eq(notifications.user_id, userId),
+				eq(notifications.action_url, actionUrl),
+				eq(notifications.is_read, false)
+			)
+		);
+}
+
+/**
+ * Mark all unread notifications for a user + document as read.
+ */
+export async function markReadByDocument(userId: number, documentId: number) {
+	return db
+		.update(notifications)
+		.set({ is_read: true })
+		.where(
+			and(
+				eq(notifications.user_id, userId),
+				eq(notifications.document_id, documentId),
+				eq(notifications.is_read, false)
+			)
+		);
+}

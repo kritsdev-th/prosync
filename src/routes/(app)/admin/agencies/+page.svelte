@@ -4,8 +4,11 @@
 	import BackButton from '$lib/components/BackButton.svelte';
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { exportToCsv } from '$lib/utils/format';
+	import { watchFormResult } from '$lib/stores/toast.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	watchFormResult(() => form);
 
 	let editingId = $state<number | null>(null);
 	let editName = $state('');
@@ -64,12 +67,7 @@
 		</div>
 	</div>
 
-	{#if form?.error}
-		<div class="toast-error">{form.error}</div>
-	{/if}
-	{#if form?.success}
-		<div class="toast-success">บันทึกสำเร็จ</div>
-	{/if}
+	<!-- Toast notifications handled by global Toast component -->
 
 	<!-- Create Form -->
 	{#if showCreateForm}
@@ -197,10 +195,6 @@
 	.btn-sm-primary { padding: 6px 14px; border-radius: 8px; border: none; background: oklch(0.54 0.16 150); color: oklch(0.98 0.005 180); font-size: 0.8125rem; font-weight: 500; cursor: pointer; }
 	.btn-sm-ghost { padding: 6px 14px; border-radius: 8px; border: none; background: none; color: oklch(0.45 0.02 180); font-size: 0.8125rem; font-weight: 500; cursor: pointer; }
 	.btn-sm-ghost:hover { background: oklch(0.95 0.005 180); }
-
-	/* Toast */
-	.toast-success { padding: 12px 18px; margin-bottom: 16px; border-radius: 10px; background: oklch(0.54 0.16 150 / 0.08); color: oklch(0.38 0.14 150); font-size: 0.875rem; border-left: 3px solid oklch(0.54 0.16 150); }
-	.toast-error { padding: 12px 18px; margin-bottom: 16px; border-radius: 10px; background: oklch(0.58 0.2 25 / 0.08); color: oklch(0.45 0.18 25); font-size: 0.875rem; border-left: 3px solid oklch(0.58 0.2 25); }
 
 	/* Create Card */
 	.create-card { background: oklch(0.98 0.005 180); border: 1px solid oklch(0.88 0.01 180); border-radius: 14px; padding: 24px; margin-bottom: 20px; animation: slide-down 0.3s cubic-bezier(0.16, 1, 0.3, 1); }

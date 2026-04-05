@@ -2,7 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { workflows, workflowSteps, users, agencies, provinces } from '$lib/server/db/schema';
-import { eq, asc, and, isNull, or } from 'drizzle-orm';
+import { eq, asc, and, isNull, or, inArray, sql } from 'drizzle-orm';
 import { buildUiSchema } from '$lib/types/workflow';
 import type { StepType } from '$lib/types/workflow';
 
@@ -33,8 +33,23 @@ export const load: PageServerLoad = async ({ parent }) => {
 			? await db
 					.select()
 					.from(workflowSteps)
+					.where(inArray(workflowSteps.workflow_id, workflowIds))
 					.orderBy(asc(workflowSteps.workflow_id), asc(workflowSteps.step_sequence))
 			: [];
+
+	// Sync total_steps column with actual step count
+	if (workflowIds.length > 0) {
+		const stepCounts = new Map<number, number>();
+		for (const s of stepsList) {
+			stepCounts.set(s.workflow_id, (stepCounts.get(s.workflow_id) || 0) + 1);
+		}
+		for (const wf of workflowList) {
+			const actual = stepCounts.get(wf.id) || 0;
+			if (wf.total_steps !== actual) {
+				db.update(workflows).set({ total_steps: actual }).where(eq(workflows.id, wf.id)).execute();
+			}
+		}
+	}
 
 	// Load users for approver selection (non-deleted, non-super-admin)
 	// If regular user, filter to their agency

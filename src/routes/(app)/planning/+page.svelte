@@ -5,6 +5,7 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import CustomDatePicker from '$lib/components/CustomDatePicker.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 
 	let { data } = $props();
 	let showCreateModal = $state(false);
@@ -16,14 +17,7 @@
 	let viewingPlan = $state<any>(null);
 	let deletingPlan = $state<any>(null);
 
-	// Toast notifications
-	let toasts = $state<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
-	let toastId = 0;
-	function showToast(message: string, type: 'success' | 'error' = 'success') {
-		const id = ++toastId;
-		toasts = [...toasts, { id, message, type }];
-		setTimeout(() => { toasts = toasts.filter((t) => t.id !== id); }, 3000);
-	}
+	// Toast notifications handled by global Toast component
 
 	// Collapse/expand state: track which plan IDs are collapsed
 	let collapsed = $state<Set<number>>(new Set());
@@ -1013,27 +1007,4 @@
 	</div>
 {/if}
 
-<!-- Toast Notifications -->
-{#if toasts.length > 0}
-	<div class="fixed right-4 top-4 z-[60] flex flex-col gap-2" style="pointer-events: none">
-		{#each toasts as toast (toast.id)}
-			<div class="toast-slide-in rounded-lg px-4 py-3 text-[0.8125rem] font-medium"
-				style="pointer-events: auto; box-shadow: var(--shadow-md);
-					background: {toast.type === 'error' ? 'var(--color-error-muted)' : 'var(--color-success-muted)'};
-					color: {toast.type === 'error' ? 'var(--color-error)' : 'var(--color-health-700)'};
-					border: 1px solid {toast.type === 'error' ? 'oklch(0.85 0.06 25)' : 'oklch(0.85 0.06 150)'}">
-				{toast.message}
-			</div>
-		{/each}
-	</div>
-{/if}
-
-<style>
-	@keyframes toastSlideIn {
-		from { opacity: 0; transform: translateX(100%); }
-		to { opacity: 1; transform: translateX(0); }
-	}
-	.toast-slide-in {
-		animation: toastSlideIn 0.4s var(--ease-out-expo) forwards;
-	}
-</style>
+<!-- Toast notifications handled by global Toast component -->

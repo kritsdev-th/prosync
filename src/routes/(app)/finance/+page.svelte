@@ -8,21 +8,26 @@
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import CustomDatePicker from '$lib/components/CustomDatePicker.svelte';
 	import { formatBaht, formatNumber, exportToCsv } from '$lib/utils/format';
+	import { watchFormResult } from '$lib/stores/toast.svelte';
+	import { decrementFinance } from '$lib/stores/taskCounts.svelte';
 
 	let { data, form: formResult } = $props();
+
+	watchFormResult(() => formResult);
 	let canManageFinance = $derived(data.user.is_super_admin || data.user.permissions.can_manage_finance);
-	// ผอ./รองผอ. ที่ไม่ใช่ super admin — มีหน้าที่เฉพาะอนุมัติ (EXAMINED) เท่านั้น
-	let isDirectorOnly = $derived(data.user.is_director && !data.user.is_super_admin && !data.user.permissions.can_manage_finance);
+	// ผอ./รองผอ. ที่ไม่ใช่ super admin — หน้าที่หลักคืออนุมัติ (EXAMINED) เท่านั้น
+	// ไม่ว่าจะมี can_manage_finance หรือไม่ก็ตาม
+	let isDirectorOnly = $derived(data.user.is_director && !data.user.is_super_admin);
 	// ใครบ้างที่อนุมัติได้
 	let canApprove = $derived(data.user.is_super_admin || data.user.is_director);
 
-	// "งานของฉัน" — แสดงเฉพาะฎีกาที่เป็นงานของตัวเองจริงๆ
+	// "งานของฉัน" — แสดงเฉพาะฎีกาที่เป็นงานของตัวเองจริงๆ (ไม่กรองตามปีงบ เพื่อให้ตรงกับ badge ใน sidebar)
 	let myDikaTasks = $derived.by(() => {
 		if (isDirectorOnly) {
 			// ผอ./รองผอ. เห็นเฉพาะ EXAMINED (รออนุมัติ)
-			return fyFilteredDika.filter((d: any) => d.status === 'EXAMINED');
+			return data.dikaVouchers.filter((d: any) => d.status === 'EXAMINED');
 		}
-		return fyFilteredDika.filter((d: any) => {
+		return data.dikaVouchers.filter((d: any) => {
 			if (d.status === 'PENDING_EXAMINE' && canManageFinance) return true;
 			if (d.status === 'EXAMINED' && canApprove) return true;
 			if (d.status === 'APPROVED' && canManageFinance) return true;
@@ -58,9 +63,14 @@
 	});
 
 	// Fiscal year filtered data (dika, tax, loans)
-	let fyFilteredDika = $derived(
-		selectedFyId ? data.dikaVouchers.filter((d: any) => d.fiscal_year_id === selectedFyId) : data.dikaVouchers
-	);
+	// ผอ./รองผอ. เห็นเฉพาะงานที่ตนเองรับผิดชอบ (EXAMINED) ไม่ใช่ทุกงาน
+	let fyFilteredDika = $derived.by(() => {
+		let list = selectedFyId ? data.dikaVouchers.filter((d: any) => d.fiscal_year_id === selectedFyId) : data.dikaVouchers;
+		if (isDirectorOnly) {
+			list = list.filter((d: any) => d.status === 'EXAMINED');
+		}
+		return list;
+	});
 	let fyFilteredTax = $derived(
 		selectedFyId ? data.taxTransactions.filter((t: any) => t.fiscal_year_id === selectedFyId) : data.taxTransactions
 	);
@@ -132,9 +142,7 @@
 		/>
 	{/if}
 
-	{#if formResult?.message}
-		<div class="mt-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700">{formResult.message}</div>
-	{/if}
+	<!-- Toast notifications are now handled by the global Toast component -->
 
 	<!-- Tabs -->
 	<div class="mt-6 flex gap-1 border-b">
@@ -385,17 +393,17 @@
 							<td class="px-4 py-3">
 								{#if loan.status === 'PENDING' && canManageFinance}
 									<div class="flex gap-1">
-										<form method="POST" action="?/approveLoan" use:enhance>
+										<form method="POST" action="?/approveLoan" use:enhance={() => { return async ({ update }) => { await update(); }; }}>
 											<input type="hidden" name="loan_id" value={loan.id} />
 											<button type="submit" name="action" value="APPROVED" class="rounded px-2 py-1 text-xs text-green-600 hover:bg-green-50">อนุมัติ</button>
 										</form>
-										<form method="POST" action="?/approveLoan" use:enhance>
+										<form method="POST" action="?/approveLoan" use:enhance={() => { return async ({ update }) => { await update(); }; }}>
 											<input type="hidden" name="loan_id" value={loan.id} />
 											<button type="submit" name="action" value="REJECTED" class="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50">ปฏิเสธ</button>
 										</form>
 									</div>
 								{:else if loan.status === 'APPROVED' && canManageFinance}
-									<form method="POST" action="?/repayLoan" use:enhance class="flex items-center gap-1">
+									<form method="POST" action="?/repayLoan" use:enhance={() => { return async ({ update }) => { await update(); }; }} class="flex items-center gap-1">
 										<input type="hidden" name="loan_id" value={loan.id} />
 										<input type="number" name="repay_amount" required min="1" step="0.01"
 											placeholder="จำนวน" class="w-24 rounded border px-2 py-1 text-xs" />
@@ -592,11 +600,11 @@
 					<p class="mb-3 text-sm font-medium" style="color: oklch(0.35 0.02 180);">ตรวจสอบฎีกาและเอกสารประกอบ</p>
 					<p class="mb-3 text-xs" style="color: oklch(0.5 0.02 180);">ตรวจลายมือชื่อ, หนี้ผูกพัน, เงินงบประมาณ, เอกสารประกอบ — หากไม่ถูกต้องแจ้งแก้ไขภายใน 3 วันทำการ</p>
 					<div class="flex gap-2">
-						<form method="POST" action="?/approveDika" use:enhance={() => { return async ({ update }) => { selectedDika = null; await update(); }; }}>
+						<form method="POST" action="?/approveDika" use:enhance={() => { return async ({ result, update }) => { selectedDika = null; if (result.type === 'success') decrementFinance(); await update(); }; }}>
 							<input type="hidden" name="dika_id" value={d.id} />
 							<button type="submit" name="action" value="examine" class="rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: oklch(0.52 0.14 240);">ตรวจสอบเสร็จสิ้น</button>
 						</form>
-						<form method="POST" action="?/approveDika" use:enhance={() => { return async ({ update }) => { selectedDika = null; await update(); }; }}>
+						<form method="POST" action="?/approveDika" use:enhance={() => { return async ({ result, update }) => { selectedDika = null; if (result.type === 'success') decrementFinance(); await update(); }; }}>
 							<input type="hidden" name="dika_id" value={d.id} />
 							<button type="submit" name="action" value="reject" class="rounded-lg border px-4 py-2 text-sm font-medium" style="color: oklch(0.45 0.18 25); border-color: oklch(0.58 0.2 25 / 0.3);">คืนแก้ไข</button>
 						</form>
@@ -606,11 +614,11 @@
 					<p class="mb-3 text-sm font-medium" style="color: oklch(0.35 0.02 180);">พิจารณาอนุมัติการเบิกจ่าย</p>
 					<p class="mb-3 text-xs" style="color: oklch(0.5 0.02 180);">เสนอฎีกาตามลำดับชั้นเพื่อพิจารณาอนุมัติ</p>
 					<div class="flex gap-2">
-						<form method="POST" action="?/approveDika" use:enhance={() => { return async ({ update }) => { selectedDika = null; await update(); }; }}>
+						<form method="POST" action="?/approveDika" use:enhance={() => { return async ({ result, update }) => { selectedDika = null; if (result.type === 'success') decrementFinance(); await update(); }; }}>
 							<input type="hidden" name="dika_id" value={d.id} />
 							<button type="submit" name="action" value="approve" class="rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: oklch(0.54 0.16 150);">อนุมัติเบิกจ่าย</button>
 						</form>
-						<form method="POST" action="?/approveDika" use:enhance={() => { return async ({ update }) => { selectedDika = null; await update(); }; }}>
+						<form method="POST" action="?/approveDika" use:enhance={() => { return async ({ result, update }) => { selectedDika = null; if (result.type === 'success') decrementFinance(); await update(); }; }}>
 							<input type="hidden" name="dika_id" value={d.id} />
 							<button type="submit" name="action" value="reject" class="rounded-lg border px-4 py-2 text-sm font-medium" style="color: oklch(0.45 0.18 25); border-color: oklch(0.58 0.2 25 / 0.3);">ปฏิเสธ</button>
 						</form>
@@ -618,7 +626,7 @@
 
 				{:else if d.status === 'APPROVED' && isFinanceStaff}
 					<p class="mb-3 text-sm font-medium" style="color: oklch(0.35 0.02 180);">จ่ายเงิน หักภาษี และตัดบัญชี</p>
-					<form method="POST" action="?/approveDika" use:enhance={() => { return async ({ update }) => { selectedDika = null; await update(); }; }} class="space-y-3">
+					<form method="POST" action="?/approveDika" use:enhance={() => { return async ({ result, update }) => { selectedDika = null; if (result.type === 'success') decrementFinance(); await update(); }; }} class="space-y-3">
 						<input type="hidden" name="dika_id" value={d.id} />
 						<input type="hidden" name="action" value="pay" />
 						<div class="grid grid-cols-2 gap-3">
@@ -675,7 +683,7 @@
 		<div class="w-full max-w-lg rounded-2xl bg-white p-7 shadow-2xl" style="animation: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);" onclick={(e) => e.stopPropagation()}>
 			<h2 class="mb-5 text-lg font-semibold" style="color: oklch(0.2 0.02 180);">เพิ่มบัญชีธนาคาร</h2>
 			<form method="POST" action="?/createBankAccount" use:enhance={() => {
-				return async ({ update }) => { showCreateAccountModal = false; await update(); };
+				return async ({ result, update }) => { showCreateAccountModal = false; await update(); };
 			}}>
 				<input type="hidden" name="agency_id" value={data.selectedAgencyId || ''} />
 				<div class="space-y-4">
@@ -734,7 +742,7 @@
 		<div class="w-full max-w-lg rounded-2xl bg-white p-7 shadow-2xl" style="animation: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);" onclick={(e) => e.stopPropagation()}>
 			<h2 class="mb-5 text-lg font-semibold" style="color: oklch(0.2 0.02 180);">สร้างคำขอยืมเงิน</h2>
 			<form method="POST" action="?/createLoan" use:enhance={() => {
-				return async ({ update }) => { showCreateLoanModal = false; selectedLoanType = ''; await update(); };
+				return async ({ result, update }) => { showCreateLoanModal = false; selectedLoanType = ''; await update(); };
 			}}>
 				<input type="hidden" name="borrower_agency_id" value={data.selectedAgencyId || ''} />
 				<div class="space-y-4">

@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { watchFormResult } from '$lib/stores/toast.svelte';
 
 	let { data, form: formResult } = $props();
+
+	watchFormResult(() => formResult);
 	let isEditing = $state(false);
 	let editName = $state(data.profile.name);
 	let editPosition = $state(data.profile.position || '');
@@ -22,12 +25,7 @@
 </script>
 
 <div class="profile">
-	{#if formResult?.message}
-		<div class="toast toast-ok">{formResult.message}</div>
-	{/if}
-	{#if formResult?.error}
-		<div class="toast toast-err">{formResult.error}</div>
-	{/if}
+	<!-- Toast notifications handled by global Toast component -->
 
 	<!-- ======== HERO ======== -->
 	<div class="hero">
@@ -174,11 +172,6 @@
 		font-family: 'Noto Sans Thai', system-ui, sans-serif;
 		animation: fadeUp .5s ease;
 	}
-
-	/* toast */
-	.toast { padding: 10px 16px; border-radius: 10px; font-size: .8125rem; margin-bottom: 14px; }
-	.toast-ok { background: #e8f5e9; color: #2e7d32; border-left: 3px solid #4caf50; }
-	.toast-err { background: #fce4ec; color: #c62828; border-left: 3px solid #ef5350; }
 
 	/* ========== HERO ========== */
 	.hero {

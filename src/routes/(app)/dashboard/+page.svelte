@@ -68,6 +68,7 @@
 			selectedOrgUnitId={filters.orgUnitId}
 			isSuperAdmin={data.user.is_super_admin}
 			isDirector={false}
+			compact={true}
 		/>
 	{/if}
 

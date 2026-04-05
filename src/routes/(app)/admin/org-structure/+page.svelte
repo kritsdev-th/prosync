@@ -2,8 +2,11 @@
 	import { enhance } from '$app/forms';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
+	import { watchFormResult } from '$lib/stores/toast.svelte';
 
 	let { data, form: formResult } = $props();
+
+	watchFormResult(() => formResult);
 	let showCreateModal = $state(false);
 	let editingUnit = $state<any>(null);
 	let searchQuery = $state('');
@@ -142,9 +145,7 @@
 		{/if}
 	</div>
 
-	{#if formResult?.message}
-		<div class="toast-success">{formResult.message}</div>
-	{/if}
+	<!-- Toast notifications handled by global Toast component -->
 
 	<!-- Search & Filter -->
 	<div class="filter-bar">
@@ -319,17 +320,6 @@
 	.btn-ghost:hover { background: oklch(0.95 0.005 180); }
 
 	.btn-icon { width: 16px; height: 16px; }
-
-	/* ── Toast ── */
-	.toast-success {
-		padding: 12px 18px;
-		margin-bottom: 16px;
-		border-radius: 10px;
-		background: oklch(0.54 0.16 150 / 0.08);
-		color: oklch(0.38 0.14 150);
-		font-size: 0.875rem;
-		border-left: 3px solid oklch(0.54 0.16 150);
-	}
 
 	/* ── Filter Bar ── */
 	.filter-bar {

@@ -7,8 +7,12 @@
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { formatBaht } from '$lib/utils/format';
 	import { inferStepType, STEP_TYPE_LABELS, getStepConfigSummary } from '$lib/types/workflow';
+	import { watchFormResult } from '$lib/stores/toast.svelte';
+	import { decrementProcurement } from '$lib/stores/taskCounts.svelte';
 
 	let { data, form: formResult } = $props();
+
+	watchFormResult(() => formResult);
 	let showCreateModal = $state(false);
 	let selectedWorkflowId = $state<number | null>(null);
 	let searchQuery = $state('');
@@ -74,12 +78,7 @@
 		/>
 	{/if}
 
-	{#if formResult?.message}
-		<div class="toast-success">{formResult.message}</div>
-	{/if}
-	{#if formResult?.errors?.plan_id}
-		<div class="toast-error">{formResult.errors.plan_id[0]}</div>
-	{/if}
+	<!-- Toast notifications handled by global Toast component -->
 
 	<!-- Fiscal Year Tabs + Search -->
 	<div class="filter-bar">

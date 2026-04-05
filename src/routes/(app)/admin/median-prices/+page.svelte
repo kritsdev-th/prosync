@@ -5,8 +5,11 @@
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { formatBaht, formatThaiDate, exportToCsv } from '$lib/utils/format';
 	import CustomDatePicker from '$lib/components/CustomDatePicker.svelte';
+	import { watchFormResult } from '$lib/stores/toast.svelte';
 
 	let { data, form: formResult } = $props();
+
+	watchFormResult(() => formResult);
 	let showCreateModal = $state(false);
 	let editingPrice = $state<any>(null);
 	let searchQuery = $state('');
@@ -90,9 +93,7 @@
 		{/if}
 	</div>
 
-	{#if formResult?.message}
-		<div class="toast-success">{formResult.message}</div>
-	{/if}
+	<!-- Toast notifications handled by global Toast component -->
 
 	{#if data.selectedProvinceId}
 		<!-- Search -->
@@ -304,13 +305,6 @@
 	}
 	.province-select:focus { outline: none; border-color: oklch(0.52 0.14 240); box-shadow: 0 0 0 3px oklch(0.52 0.14 240 / 0.12); }
 	.province-count { padding: 3px 12px; border-radius: 6px; background: oklch(0.52 0.14 240 / 0.08); color: oklch(0.42 0.12 240); font-size: 0.8125rem; font-weight: 600; }
-
-	/* ── Toast ── */
-	.toast-success {
-		padding: 12px 18px; margin-bottom: 16px; border-radius: 10px;
-		background: oklch(0.54 0.16 150 / 0.08); color: oklch(0.38 0.14 150);
-		font-size: 0.875rem; border-left: 3px solid oklch(0.54 0.16 150);
-	}
 
 	/* ── Filter ── */
 	.filter-bar { margin-bottom: 16px; }

@@ -2,16 +2,27 @@
 	import type { LayoutData } from './$types';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import NotificationBell from '$lib/components/NotificationBell.svelte';
+	import Toast from '$lib/components/Toast.svelte';
+	import { initCounts, getProcurementCount, getFinanceCount, getTotalCount } from '$lib/stores/taskCounts.svelte';
 
 	let { data, children } = $props();
 	let sidebarOpen = $state(true);
 	let showProfileMenu = $state(false);
+
+	// Initialize reactive task counts from server data
+	$effect(() => {
+		initCounts(data.pendingTaskCount, data.pendingFinanceCount);
+	});
+
+	let procCount = $derived(getProcurementCount());
+	let finCount = $derived(getFinanceCount());
+	let totalCount = $derived(getTotalCount());
 </script>
 
 <svelte:window onclick={() => { showProfileMenu = false; }} />
 
 <div class="flex h-screen bg-gradient-to-br from-slate-50 via-brand-50/30 to-health-50/20">
-	<Sidebar user={data.user} open={sidebarOpen} pendingTaskCount={data.pendingTaskCount} pendingFinanceCount={data.pendingFinanceCount} />
+	<Sidebar user={data.user} open={sidebarOpen} pendingTaskCount={procCount} pendingFinanceCount={finCount} />
 
 	<div class="flex flex-1 flex-col overflow-hidden">
 		<!-- Top Navbar (z-auto, no stacking context) -->
@@ -39,7 +50,7 @@
 
 			<div class="flex items-center gap-3">
 				<!-- Notification Bell -->
-				<NotificationBell initialCount={data.notificationCount} />
+				<NotificationBell initialCount={data.notificationCount} pendingProcurement={procCount} pendingFinance={finCount} />
 
 				<!-- User info with profile dropdown -->
 				<div class="profile-container" onclick={(e: MouseEvent) => e.stopPropagation()}>
@@ -95,6 +106,8 @@
 		</main>
 	</div>
 </div>
+
+<Toast />
 
 <style>
 	.profile-container { position: relative; }

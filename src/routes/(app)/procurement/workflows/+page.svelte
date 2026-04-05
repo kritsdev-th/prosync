@@ -4,8 +4,12 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import { STEP_TYPES, STEP_TYPE_LABELS, COMMITTEE_TYPES, COMMITTEE_LABELS, inferStepType, getStepConfigSummary, type StepType } from '$lib/types/workflow';
+	import { watchFormResult } from '$lib/stores/toast.svelte';
+	import { decrementProcurement } from '$lib/stores/taskCounts.svelte';
 
 	let { data, form: formResult } = $props();
+
+	watchFormResult(() => formResult);
 	let showCreateWfModal = $state(false);
 	let editingWorkflow = $state<any>(null);
 	let expandedId = $state<number | null>(null);
@@ -194,12 +198,7 @@
 		{/if}
 	</div>
 
-	{#if formResult?.message}
-		<div class="toast-success">{formResult.message}</div>
-	{/if}
-	{#if formResult?.error}
-		<div class="toast-error">{formResult.error}</div>
-	{/if}
+	<!-- Toast notifications handled by global Toast component -->
 
 	<!-- Central Workflows Section -->
 	<section class="wf-section">

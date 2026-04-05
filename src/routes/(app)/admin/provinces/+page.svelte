@@ -3,8 +3,11 @@
 	import { enhance } from '$app/forms';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { exportToCsv } from '$lib/utils/format';
+	import { watchFormResult } from '$lib/stores/toast.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	watchFormResult(() => form);
 
 	let showCreateForm = $state(false);
 	let editingId = $state<number | null>(null);

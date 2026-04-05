@@ -6,13 +6,18 @@
 	import CustomDatePicker from '$lib/components/CustomDatePicker.svelte';
 	import { formatThaiDateTime, formatBaht, formatNumber } from '$lib/utils/format';
 	import { goto } from '$app/navigation';
+	import { watchFormResult } from '$lib/stores/toast.svelte';
+	import { decrementProcurement } from '$lib/stores/taskCounts.svelte';
 
 	let { data, form: formResult } = $props();
+
+	watchFormResult(() => formResult);
 
 	// After successful step advance or approval, redirect if user can't act on next step
 	function handleStepComplete() {
 		return async ({ result, update }: any) => {
 			if (result.type === 'success') {
+				decrementProcurement();
 				// Redirect to tasks page since the step has moved on
 				window.location.href = '/procurement/tasks';
 				return;
@@ -80,9 +85,7 @@
 		</div>
 	</div>
 
-	{#if formResult?.message}
-		<div class="mb-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700">{formResult.message}</div>
-	{/if}
+	<!-- Toast notifications handled by global Toast component -->
 
 	<!-- Step Progress -->
 	<div class="step-progress-container">
