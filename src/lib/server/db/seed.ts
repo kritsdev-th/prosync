@@ -455,7 +455,7 @@ async function seed() {
 		// 🟡 2. วิธีเฉพาะเจาะจง (เกิน 100,000 - 500,000 บาท) — 14 steps
 		//    เพิ่มราคากลาง TOR และการทำสัญญา
 		// ────────────────────────────────────────────────────────────
-		const wf2 = workflows.find((w) => w.name.includes('เกิน 100,000'))!;
+		const wf2 = workflows.find((w) => w.name.includes('เกิน 100,000') && !w.name.includes('ไม่เกิน'))!;
 		await db.insert(schema.workflowSteps).values([
 			// ── เฟส 1: เตรียมการและอนุมัติหลักการ ──
 			{ workflow_id: wf2.id, step_sequence: 1, step_name: 'จัดทำแผนจัดซื้อจัดจ้าง', ui_schema: { type: 'document_upload', components: ['budget_input', 'single_pdf_uploader'], description: 'เจ้าหน้าที่พัสดุทำแผนและประกาศลงระบบ e-GP' }, required_pdfs: ['แผนจัดซื้อจัดจ้าง'], approver_role: null, is_final_step: false, step_assignees: [{ type: 'creator' }] },
@@ -1024,7 +1024,7 @@ async function seed() {
 
 		if (workflows.length > 0 && leafPlans.length >= 10 && proc1U && procHeadU && directorU && finHeadU && fin1U) {
 			const wf1 = workflows.find((w) => w.name.includes('ไม่เกิน 100,000'))!;
-			const wf2 = workflows.find((w) => w.name.includes('เกิน 100,000'))!;
+			const wf2 = workflows.find((w) => w.name.includes('เกิน 100,000') && !w.name.includes('ไม่เกิน'))!;
 			const wf3 = workflows.find((w) => w.name === 'วิธีคัดเลือก')!;
 			const wf4 = workflows.find((w) => w.name.includes('e-bidding'))!;
 			const wf5 = workflows.find((w) => w.name.includes('e-market'))!;
