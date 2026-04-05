@@ -6,6 +6,7 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ScopeSelector from '$lib/components/ScopeSelector.svelte';
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
+	import CustomDatePicker from '$lib/components/CustomDatePicker.svelte';
 	import { formatBaht, formatNumber, exportToCsv } from '$lib/utils/format';
 
 	let { data, form: formResult } = $props();
@@ -14,7 +15,7 @@
 	let showCreateAccountModal = $state(false);
 	let showCreateLoanModal = $state(false);
 	let selectedLoanType = $state('');
-	const perPage = 20;
+	const perPage = 5;
 
 	// Pagination states
 	let dikaPage = $state(1);
@@ -457,12 +458,17 @@
 				<div class="space-y-4">
 					<div>
 						<label class="mb-1 block text-sm font-medium" style="color: oklch(0.35 0.02 180);">ประเภทการยืม</label>
-						<select name="loan_type" required bind:value={selectedLoanType}
-							class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color: oklch(0.82 0.015 180);">
-							<option value="">-- เลือกประเภท --</option>
-							<option value="TAX_POOL">ยืมจากเงินภาษี (Tax Pool)</option>
-							<option value="INTER_AGENCY">ยืมจากหน่วยงานอื่น</option>
-						</select>
+						<CustomSelect
+							options={[
+								{ value: 'TAX_POOL', label: 'ยืมจากเงินภาษี (Tax Pool)' },
+								{ value: 'INTER_AGENCY', label: 'ยืมจากหน่วยงานอื่น' }
+							]}
+							name="loan_type"
+							required={true}
+							placeholder="-- เลือกประเภท --"
+							bind:value={selectedLoanType}
+							class="w-full"
+						/>
 					</div>
 					{#if selectedLoanType === 'TAX_POOL'}
 						<div>
@@ -501,8 +507,7 @@
 					</div>
 					<div>
 						<label class="mb-1 block text-sm font-medium" style="color: oklch(0.35 0.02 180);">กำหนดคืน (ถ้ามี)</label>
-						<input name="due_date" type="date"
-							class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color: oklch(0.82 0.015 180);" />
+						<CustomDatePicker name="due_date" class="w-full" />
 					</div>
 				</div>
 				<div class="mt-6 flex justify-end gap-3">
