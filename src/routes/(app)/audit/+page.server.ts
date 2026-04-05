@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import { provinces, agencies } from '$lib/server/db/schema';
+import { provinces, agencies, fiscalYears } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { getMongoDb } from '$lib/server/db/mongodb';
 import { type AuditRecord, type AuditCollection, VALID_AUDIT_COLLECTIONS } from '$lib/server/validation/types';
@@ -74,10 +74,20 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 		}
 	}
 
+	// Load fiscal years for filtering
+	let fyList: { id: number; year_name: string; is_active: boolean }[] = [];
+	if (selectedAgencyId) {
+		fyList = await db
+			.select({ id: fiscalYears.id, year_name: fiscalYears.year_name, is_active: fiscalYears.is_active })
+			.from(fiscalYears)
+			.where(eq(fiscalYears.agency_id, selectedAgencyId));
+	}
+
 	return {
 		user,
 		records,
 		collection,
+		fiscalYears: fyList,
 		provinces: provincesList,
 		agencies: agenciesList,
 		selectedProvinceId,

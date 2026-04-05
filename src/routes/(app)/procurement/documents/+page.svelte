@@ -12,6 +12,13 @@
 	let showCreateModal = $state(false);
 	let selectedWorkflowId = $state<number | null>(null);
 	let searchQuery = $state('');
+	let canCreate = $derived(data.user.is_super_admin || data.user.is_director || data.user.permissions?.can_manage_procurement);
+	let selectedFyId = $state<number | null>(null);
+	let _fyInit = $derived.by(() => {
+		if (selectedFyId === null && data.fiscalYears?.length > 0) {
+			selectedFyId = data.fiscalYears.find((fy: any) => fy.is_active)?.id ?? data.fiscalYears[0]?.id ?? null;
+		}
+	});
 
 	let selectedWorkflowSteps = $derived(
 		selectedWorkflowId
@@ -20,13 +27,21 @@
 	);
 
 	let filteredDocs = $derived.by(() => {
-		if (!searchQuery.trim()) return data.documents;
-		const q = searchQuery.trim().toLowerCase();
-		return data.documents.filter((d: any) =>
-			d.workflow_name.toLowerCase().includes(q) ||
-			d.plan_title.toLowerCase().includes(q) ||
-			String(d.id).includes(q)
-		);
+		let docs = data.documents;
+		// Filter by fiscal year
+		if (selectedFyId) {
+			docs = docs.filter((d: any) => d.fiscal_year_id === selectedFyId);
+		}
+		// Filter by search query
+		if (searchQuery.trim()) {
+			const q = searchQuery.trim().toLowerCase();
+			docs = docs.filter((d: any) =>
+				d.workflow_name.toLowerCase().includes(q) ||
+				d.plan_title.toLowerCase().includes(q) ||
+				String(d.id).includes(q)
+			);
+		}
+		return docs;
 	});
 </script>
 
@@ -38,10 +53,12 @@
 			<h1 class="page-title">เอกสารจัดซื้อจัดจ้าง</h1>
 			<p class="page-subtitle">สร้างเอกสาร เชื่อมแผนงาน และดำเนินการตามขั้นตอน</p>
 		</div>
-		<button onclick={() => (showCreateModal = true)} class="btn-primary">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-			สร้างเอกสาร
-		</button>
+		{#if canCreate}
+			<button onclick={() => (showCreateModal = true)} class="btn-primary">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+				สร้างเอกสาร
+			</button>
+		{/if}
 	</div>
 
 	{#if data.user.is_super_admin}
@@ -53,6 +70,7 @@
 			selectedAgencyId={data.selectedAgencyId}
 			isSuperAdmin={true}
 			basePath="/procurement/documents"
+			compact={true}
 		/>
 	{/if}
 
@@ -63,8 +81,19 @@
 		<div class="toast-error">{formResult.errors.plan_id[0]}</div>
 	{/if}
 
-	<!-- Search -->
+	<!-- Fiscal Year Tabs + Search -->
 	<div class="filter-bar">
+		{#if data.fiscalYears?.length > 0}
+			<div class="fy-tabs">
+				<button class="fy-tab" class:active={!selectedFyId} onclick={() => (selectedFyId = null)}>ทั้งหมด</button>
+				{#each data.fiscalYears as fy}
+					<button class="fy-tab" class:active={selectedFyId === fy.id} onclick={() => (selectedFyId = fy.id)}>
+						{fy.year_name}
+						{#if fy.is_active}<span class="fy-dot"></span>{/if}
+					</button>
+				{/each}
+			</div>
+		{/if}
 		<div class="search-wrap">
 			<svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
 			<input type="text" placeholder="ค้นหาวิธีจัดซื้อ, แผนงาน..." bind:value={searchQuery} class="search-input" />
@@ -192,7 +221,12 @@
 	.toast-success { padding: 12px 18px; margin-bottom: 12px; border-radius: 10px; background: oklch(0.54 0.16 150 / 0.08); color: oklch(0.38 0.14 150); font-size: 0.875rem; border-left: 3px solid oklch(0.54 0.16 150); }
 	.toast-error { padding: 12px 18px; margin-bottom: 12px; border-radius: 10px; background: oklch(0.58 0.2 25 / 0.08); color: oklch(0.45 0.18 25); font-size: 0.875rem; border-left: 3px solid oklch(0.58 0.2 25); }
 
-	.filter-bar { margin-bottom: 16px; }
+	.filter-bar { margin-bottom: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+	.fy-tabs { display: flex; gap: 2px; }
+	.fy-tab { padding: 6px 14px; border: none; border-radius: 8px; background: transparent; font-family: 'Noto Sans Thai', sans-serif; font-size: 0.8125rem; font-weight: 500; color: oklch(0.5 0.02 180); cursor: pointer; transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1); position: relative; }
+	.fy-tab:hover { color: oklch(0.4 0.04 180); background: oklch(0.52 0.14 240 / 0.04); }
+	.fy-tab.active { color: oklch(0.42 0.14 240); background: oklch(0.52 0.14 240 / 0.08); font-weight: 600; }
+	.fy-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: oklch(0.54 0.16 150); margin-left: 4px; vertical-align: middle; }
 	.search-wrap { position: relative; max-width: 380px; }
 	.search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: oklch(0.55 0.02 180); pointer-events: none; }
 	.search-input { width: 100%; padding: 9px 14px 9px 42px; border: 1px solid oklch(0.82 0.015 180); border-radius: 10px; background: oklch(0.995 0.002 180); font-family: 'Noto Sans Thai', sans-serif; font-size: 0.875rem; color: oklch(0.25 0.02 180); }

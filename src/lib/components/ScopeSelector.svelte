@@ -13,6 +13,7 @@
 		isSuperAdmin?: boolean;
 		isDirector?: boolean;
 		basePath?: string;
+		compact?: boolean;
 	}
 
 	let {
@@ -24,7 +25,8 @@
 		selectedOrgUnitId = null,
 		isSuperAdmin = false,
 		isDirector = false,
-		basePath = '/dashboard'
+		basePath = '/dashboard',
+		compact = false
 	}: Props = $props();
 
 	let provinceId = $state(selectedProvinceId);
@@ -90,11 +92,13 @@
 </script>
 
 {#if showSelector}
-	<div class="scope-selector">
-		<div class="scope-header">
-			<h2 class="scope-title">เลือกขอบเขตข้อมูล</h2>
-			<p class="scope-subtitle">เลือกจังหวัดและหน่วยงานเพื่อดูข้อมูลเชิงลึก</p>
-		</div>
+	<div class="scope-selector" class:compact>
+		{#if !compact}
+			<div class="scope-header">
+				<h2 class="scope-title">เลือกขอบเขตข้อมูล</h2>
+				<p class="scope-subtitle">เลือกจังหวัดและหน่วยงานเพื่อดูข้อมูลเชิงลึก</p>
+			</div>
+		{/if}
 
 		<div class="scope-fields" class:two-cols={!showOrgUnit}>
 			<div class="field-group">
@@ -148,6 +152,32 @@
 		padding: 24px;
 		margin-bottom: 32px;
 		animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.scope-selector.compact {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		padding: 12px 18px;
+		margin-bottom: 16px;
+		border-radius: 12px;
+	}
+	.compact .scope-fields {
+		display: flex;
+		gap: 12px;
+		flex: 1;
+	}
+	.compact .scope-fields.two-cols {
+		grid-template-columns: none;
+	}
+	.compact .field-group {
+		flex-direction: row;
+		align-items: center;
+		gap: 8px;
+	}
+	.compact .field-label {
+		white-space: nowrap;
+		font-size: 0.8125rem;
 	}
 
 	.scope-header {

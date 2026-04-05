@@ -8,25 +8,32 @@ import {
 	bankAccounts,
 	bankTransactions,
 	taxTransactions,
+	fiscalYears,
 	agencies,
 	provinces,
 	bank,
 	loans
 } from '$lib/server/db/schema';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, and, isNull } from 'drizzle-orm';
 import { writeAuditLog } from '$lib/server/db/audit';
+import { createNotification } from '$lib/server/notifications';
+import { users, orgUnits, documents } from '$lib/server/db/schema';
 import { approveDikaSchema, createBankAccountSchema, createLoanSchema, approveLoanSchema, repayLoanSchema, parseFormData } from '$lib/server/validation/schemas';
 
 interface DikaRow {
 	id: number;
 	document_id: number;
 	vendor_name: string;
+	vendor_tax_id: string;
 	plan_title: string;
+	fiscal_year_id: number;
 	gross_amount: string;
 	fine_amount: string;
 	tax_amount: string;
 	net_amount: string;
 	status: string;
+	payment_bank_account_id: number;
+	tax_pool_account_id: number | null;
 }
 
 interface BankAccountRow {
@@ -69,21 +76,30 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 
 	let dikaList: DikaRow[] = [];
 	let accountList: BankAccountRow[] = [];
-	let taxList: typeof taxTransactions.$inferSelect[] = [];
+	let taxList: any[] = [];
 	let loanList: typeof loans.$inferSelect[] = [];
+	let fyList: { id: number; year_name: string; is_active: boolean }[] = [];
 
 	if (agencyId) {
+		fyList = await db
+			.select({ id: fiscalYears.id, year_name: fiscalYears.year_name, is_active: fiscalYears.is_active })
+			.from(fiscalYears)
+			.where(eq(fiscalYears.agency_id, agencyId));
 		dikaList = await db
 			.select({
 				id: dikaVouchers.id,
 				document_id: dikaVouchers.document_id,
 				vendor_name: vendors.company_name,
+				vendor_tax_id: vendors.tax_id,
 				plan_title: plans.title,
+				fiscal_year_id: plans.fiscal_year_id,
 				gross_amount: dikaVouchers.gross_amount,
 				fine_amount: dikaVouchers.fine_amount,
 				tax_amount: dikaVouchers.tax_amount,
 				net_amount: dikaVouchers.net_amount,
-				status: dikaVouchers.status
+				status: dikaVouchers.status,
+				payment_bank_account_id: dikaVouchers.payment_bank_account_id,
+				tax_pool_account_id: dikaVouchers.tax_pool_account_id
 			})
 			.from(dikaVouchers)
 			.innerJoin(vendors, eq(dikaVouchers.vendor_id, vendors.id))
@@ -106,8 +122,22 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 			.where(eq(bankAccounts.agency_id, agencyId));
 
 		taxList = await db
-			.select()
+			.select({
+				id: taxTransactions.id,
+				agency_id: taxTransactions.agency_id,
+				dika_voucher_id: taxTransactions.dika_voucher_id,
+				vendor_id: taxTransactions.vendor_id,
+				tax_id: taxTransactions.tax_id,
+				tax_rate: taxTransactions.tax_rate,
+				tax_base_amount: taxTransactions.tax_base_amount,
+				tax_amount: taxTransactions.tax_amount,
+				tax_form_type: taxTransactions.tax_form_type,
+				status: taxTransactions.status,
+				fiscal_year_id: plans.fiscal_year_id
+			})
 			.from(taxTransactions)
+			.innerJoin(dikaVouchers, eq(taxTransactions.dika_voucher_id, dikaVouchers.id))
+			.innerJoin(plans, eq(dikaVouchers.plan_id, plans.id))
 			.where(eq(taxTransactions.agency_id, agencyId));
 
 		loanList = await db
@@ -130,6 +160,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 		loans: loanList,
 		vendors: vendorList,
 		banks: bankList,
+		fiscalYears: fyList,
 		allAgencies,
 		provinces: provincesList,
 		agencies: agencyList,
@@ -139,6 +170,12 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 };
 
 export const actions: Actions = {
+	// ── กระบวนการฎีกาเบิกจ่าย 4 ขั้นตอน ──
+	// Status flow: PENDING_EXAMINE → EXAMINED → APPROVED → PAID
+	// PENDING_EXAMINE: วางฎีกาแล้ว รอตรวจสอบ (เจ้าหน้าที่บัญชี/แผนกการเงิน)
+	// EXAMINED: ตรวจสอบแล้ว รออนุมัติ (ผอ./รองผอ.)
+	// APPROVED: อนุมัติแล้ว รอจ่ายเงิน (หัวหน้าแผนกการเงิน)
+	// PAID: จ่ายเงินแล้ว เสร็จสมบูรณ์
 	approveDika: async ({ request, locals, getClientAddress }) => {
 		const parsed = parseFormData(approveDikaSchema, await request.formData());
 		if (!parsed.success) {
@@ -150,23 +187,86 @@ export const actions: Actions = {
 			const [dika] = await db.select().from(dikaVouchers).where(eq(dikaVouchers.id, dika_id));
 			if (!dika) return fail(404, { success: false, errors: { dika_id: ['ไม่พบฎีกา'] } });
 
+			// Helper: find director (root org unit head) for this agency
+			const findDirector = async (agencyId: number) => {
+				const [rootUnit] = await db.select({ head_of_unit_id: orgUnits.head_of_unit_id })
+					.from(orgUnits).where(and(eq(orgUnits.agency_id, agencyId), isNull(orgUnits.parent_id)));
+				return rootUnit?.head_of_unit_id || null;
+			};
+
+			// Helper: find finance unit head
+			const findFinanceHead = async (agencyId: number) => {
+				const units = await db.select({ id: orgUnits.id, name: orgUnits.name, head_of_unit_id: orgUnits.head_of_unit_id })
+					.from(orgUnits).where(eq(orgUnits.agency_id, agencyId));
+				const finUnit = units.find((u) => u.name.includes('การเงิน') || u.name.includes('คลัง'));
+				return finUnit?.head_of_unit_id || null;
+			};
+
+			// ขั้นตอนที่ 2: ตรวจสอบฎีกาและเอกสารประกอบ
 			if (action === 'examine') {
-				await db
-					.update(dikaVouchers)
-					.set({ status: 'PENDING_EXAMINE', examiner_id: locals.user!.sub })
+				await db.update(dikaVouchers)
+					.set({ status: 'EXAMINED', examiner_id: locals.user!.sub })
 					.where(eq(dikaVouchers.id, dika_id));
-				return { success: true, message: 'ตรวจสอบฎีกาสำเร็จ' };
+
+				// แจ้ง ผอ. ให้อนุมัติ
+				const directorId = await findDirector(dika.agency_id);
+				if (directorId) {
+					await createNotification({
+						userId: directorId,
+						documentId: dika.document_id,
+						title: 'ฎีการออนุมัติเบิกจ่าย',
+						message: `ฎีกา #${dika_id} ผ่านการตรวจสอบแล้ว — กรุณาอนุมัติการเบิกจ่าย (${dika.net_amount} บาท)`,
+						actionUrl: '/finance',
+						notificationType: 'APPROVAL_REQUIRED'
+					});
+				}
+				return { success: true, message: 'ตรวจสอบฎีกาสำเร็จ — ส่งต่อรออนุมัติ' };
 			}
 
+			// ขั้นตอนที่ 3: อนุมัติการเบิกจ่าย
+			if (action === 'approve') {
+				await db.update(dikaVouchers)
+					.set({ status: 'APPROVED', director_id: locals.user!.sub })
+					.where(eq(dikaVouchers.id, dika_id));
+
+				// แจ้งหัวหน้าการเงินให้จ่ายเงิน
+				const finHeadId = await findFinanceHead(dika.agency_id);
+				if (finHeadId) {
+					await createNotification({
+						userId: finHeadId,
+						documentId: dika.document_id,
+						title: 'ฎีการอจ่ายเงิน',
+						message: `ฎีกา #${dika_id} ได้รับอนุมัติแล้ว — กรุณาดำเนินการจ่ายเงินและตัดบัญชี (${dika.net_amount} บาท)`,
+						actionUrl: '/finance',
+						notificationType: 'APPROVAL_REQUIRED'
+					});
+				}
+				return { success: true, message: 'อนุมัติการเบิกจ่ายสำเร็จ — ส่งต่อรอจ่ายเงิน' };
+			}
+
+			// ขั้นตอนที่ 4: จ่ายเงิน หักภาษี ตัดบัญชี
 			if (action === 'pay') {
+				const formData = await request.formData().catch(() => null);
+				// Allow selecting payment/tax accounts (use form data or default from dika)
+				const paymentAccountId = formData?.get('payment_bank_account_id')
+					? Number(formData.get('payment_bank_account_id'))
+					: dika.payment_bank_account_id;
+				const taxPoolAccountId = formData?.get('tax_pool_account_id')
+					? Number(formData.get('tax_pool_account_id'))
+					: dika.tax_pool_account_id;
+
 				await db.transaction(async (tx) => {
-					await tx
-						.update(dikaVouchers)
-						.set({ status: 'PAID', director_id: locals.user!.sub })
+					await tx.update(dikaVouchers)
+						.set({
+							status: 'PAID',
+							payment_bank_account_id: paymentAccountId,
+							tax_pool_account_id: taxPoolAccountId
+						})
 						.where(eq(dikaVouchers.id, dika_id));
 
+					// ตัดบัญชีจ่ายเงิน
 					await tx.insert(bankTransactions).values({
-						bank_account_id: dika.payment_bank_account_id,
+						bank_account_id: paymentAccountId,
 						transaction_type: 'OUT',
 						amount: dika.net_amount,
 						plan_id: dika.plan_id,
@@ -175,9 +275,10 @@ export const actions: Actions = {
 						tags: { vendor_id: dika.vendor_id }
 					});
 
-					if (Number(dika.tax_amount) > 0 && dika.tax_pool_account_id) {
+					// หักภาษี ณ ที่จ่าย (ถ้ามี)
+					if (Number(dika.tax_amount) > 0 && taxPoolAccountId) {
 						await tx.insert(bankTransactions).values({
-							bank_account_id: dika.tax_pool_account_id,
+							bank_account_id: taxPoolAccountId,
 							transaction_type: 'BORROW_TAX',
 							amount: dika.tax_amount,
 							plan_id: dika.plan_id,
@@ -186,11 +287,7 @@ export const actions: Actions = {
 							tags: { type: 'tax_withholding' }
 						});
 
-						const [vendor] = await tx
-							.select()
-							.from(vendors)
-							.where(eq(vendors.id, dika.vendor_id));
-
+						const [vendor] = await tx.select().from(vendors).where(eq(vendors.id, dika.vendor_id));
 						await tx.insert(taxTransactions).values({
 							agency_id: dika.agency_id,
 							dika_voucher_id: dika_id,
@@ -220,14 +317,44 @@ export const actions: Actions = {
 					});
 				}
 
-				return { success: true, message: 'อนุมัติจ่ายเงินสำเร็จ' };
+				// แจ้งผู้สร้างเอกสารว่าจ่ายเงินเสร็จ
+				if (dika.document_id) {
+					const [doc] = await db.select({ updated_by: documents.updated_by }).from(documents).where(eq(documents.id, dika.document_id));
+					if (doc?.updated_by) {
+						await createNotification({
+							userId: doc.updated_by,
+							documentId: dika.document_id,
+							title: 'จ่ายเงินเสร็จสมบูรณ์',
+							message: `ฎีกา #${dika_id} จ่ายเงินและตัดบัญชีเรียบร้อยแล้ว (${dika.net_amount} บาท)`,
+							actionUrl: '/finance',
+							notificationType: 'UPLOAD_REQUIRED'
+						});
+					}
+				}
+
+				return { success: true, message: 'จ่ายเงิน หักภาษี และตัดบัญชีสำเร็จ' };
 			}
 
 			if (action === 'reject') {
-				await db
-					.update(dikaVouchers)
+				await db.update(dikaVouchers)
 					.set({ status: 'REJECTED' })
 					.where(eq(dikaVouchers.id, dika_id));
+
+				// แจ้งผู้สร้างเอกสารว่าฎีกาถูกปฏิเสธ
+				if (dika.document_id) {
+					const [doc] = await db.select({ updated_by: documents.updated_by }).from(documents).where(eq(documents.id, dika.document_id));
+					if (doc?.updated_by) {
+						await createNotification({
+							userId: doc.updated_by,
+							documentId: dika.document_id,
+							title: 'ฎีกาถูกปฏิเสธ',
+							message: `ฎีกา #${dika_id} ถูกปฏิเสธ/คืนแก้ไข — กรุณาตรวจสอบและแก้ไข`,
+							actionUrl: '/finance',
+							notificationType: 'DOCUMENT_REJECTED'
+						});
+					}
+				}
+
 				return { success: true, message: 'ปฏิเสธฎีกาแล้ว' };
 			}
 		} catch (err) {

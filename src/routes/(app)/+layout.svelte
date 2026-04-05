@@ -11,7 +11,7 @@
 <svelte:window onclick={() => { showProfileMenu = false; }} />
 
 <div class="flex h-screen bg-gradient-to-br from-slate-50 via-brand-50/30 to-health-50/20">
-	<Sidebar user={data.user} open={sidebarOpen} pendingTaskCount={data.pendingTaskCount} />
+	<Sidebar user={data.user} open={sidebarOpen} pendingTaskCount={data.pendingTaskCount} pendingFinanceCount={data.pendingFinanceCount} />
 
 	<div class="flex flex-1 flex-col overflow-hidden">
 		<!-- Top Navbar (z-auto, no stacking context) -->

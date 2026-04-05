@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import type { JWTPayload } from '$lib/types/auth';
 
-	let { user, open, pendingTaskCount = 0 }: { user: JWTPayload; open: boolean; pendingTaskCount?: number } = $props();
+	let { user, open, pendingTaskCount = 0, pendingFinanceCount = 0 }: { user: JWTPayload; open: boolean; pendingTaskCount?: number; pendingFinanceCount?: number } = $props();
 
 	// Paths under /admin that belong to org-management (not system admin)
 	const orgManagementAdminPaths = ['/admin/users', '/admin/roles', '/admin/org-structure'];
@@ -112,9 +112,12 @@
 					{item.label}
 				</span>
 
-				<!-- Pending task badge for procurement -->
+				<!-- Pending task badges -->
 				{#if item.href === '/procurement' && pendingTaskCount > 0}
 					<span class="task-badge">{pendingTaskCount > 99 ? '99+' : pendingTaskCount}</span>
+				{/if}
+				{#if item.href === '/finance' && pendingFinanceCount > 0}
+					<span class="task-badge">{pendingFinanceCount > 99 ? '99+' : pendingFinanceCount}</span>
 				{/if}
 
 				<!-- Hover background glow -->

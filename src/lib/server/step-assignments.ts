@@ -5,7 +5,8 @@ import {
 	documents,
 	users,
 	orgUnits,
-	documentCommittees
+	documentCommittees,
+	dikaVouchers
 } from '$lib/server/db/schema';
 import { eq, and, sql, isNull } from 'drizzle-orm';
 import { createBulkNotifications } from './notifications';
@@ -267,6 +268,37 @@ export async function getPendingTaskCount(userId: number): Promise<number> {
 			and(
 				eq(documentStepAssignments.user_id, userId),
 				eq(documentStepAssignments.is_completed, false)
+			)
+		);
+	return result?.count ?? 0;
+}
+
+/**
+ * Get pending finance dika count for a user based on their role.
+ * - Finance staff (can_manage_finance): PENDING_EXAMINE + APPROVED
+ * - Director (is_director): EXAMINED
+ * - Super admin: all three
+ */
+export async function getPendingFinanceCount(userId: number, agencyId: number | null, isSuperAdmin: boolean, isDirector: boolean, canManageFinance: boolean): Promise<number> {
+	if (!agencyId) return 0;
+
+	const statuses: string[] = [];
+	if (isSuperAdmin) {
+		statuses.push('PENDING_EXAMINE', 'EXAMINED', 'APPROVED');
+	} else {
+		if (canManageFinance) statuses.push('PENDING_EXAMINE', 'APPROVED');
+		if (isDirector) statuses.push('EXAMINED');
+	}
+
+	if (statuses.length === 0) return 0;
+
+	const [result] = await db
+		.select({ count: sql<number>`count(*)::int` })
+		.from(dikaVouchers)
+		.where(
+			and(
+				eq(dikaVouchers.agency_id, agencyId),
+				sql`${dikaVouchers.status} IN (${sql.join(statuses.map(s => sql`${s}`), sql`, `)})`
 			)
 		);
 	return result?.count ?? 0;

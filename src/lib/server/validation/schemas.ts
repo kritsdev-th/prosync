@@ -341,7 +341,7 @@ export type GenerateDikaInput = z.infer<typeof generateDikaSchema>;
 // Finance
 // ──────────────────────────────────────────────
 
-const dikaActions = ['examine', 'pay', 'reject'] as const;
+const dikaActions = ['examine', 'approve', 'pay', 'reject'] as const;
 
 export const approveDikaSchema = z.object({
 	dika_id: positiveId,

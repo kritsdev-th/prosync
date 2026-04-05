@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getUserNotifications, getUnreadCount, markAsRead, markAllAsRead } from '$lib/server/notifications';
+import { getUserNotifications, getUnreadCount, markAsRead, markAllAsRead, deleteReadNotifications } from '$lib/server/notifications';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
@@ -29,6 +29,11 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 	if (action === 'read-all') {
 		await markAllAsRead(locals.user.sub);
+		return json({ success: true });
+	}
+
+	if (action === 'delete-read') {
+		await deleteReadNotifications(locals.user.sub);
 		return json({ success: true });
 	}
 

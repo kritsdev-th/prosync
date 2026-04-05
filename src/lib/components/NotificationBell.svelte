@@ -78,6 +78,15 @@
 		unreadCount = 0;
 	}
 
+	async function deleteRead() {
+		await fetch('/api/notifications', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'delete-read' })
+		});
+		notifications = notifications.filter((n) => !n.is_read);
+	}
+
 	function closeDropdown(e: MouseEvent) {
 		const target = e.target as HTMLElement;
 		if (!target.closest('.notif-container')) {
@@ -133,9 +142,14 @@
 		<div class="dropdown">
 			<div class="dropdown-header">
 				<h3 class="dropdown-title">แจ้งเตือน</h3>
-				{#if unreadCount > 0}
-					<button class="mark-all-btn" onclick={markAllRead}>อ่านทั้งหมด</button>
-				{/if}
+				<div class="header-actions">
+					{#if notifications.some((n) => n.is_read)}
+						<button class="mark-all-btn" style="color: oklch(0.45 0.18 25);" onclick={deleteRead}>ลบที่อ่านแล้ว</button>
+					{/if}
+					{#if unreadCount > 0}
+						<button class="mark-all-btn" onclick={markAllRead}>อ่านทั้งหมด</button>
+					{/if}
+				</div>
 			</div>
 
 			<div class="dropdown-body">
@@ -231,6 +245,7 @@
 		border-bottom: 1px solid oklch(0.92 0.005 180);
 	}
 	.dropdown-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: oklch(0.2 0.02 180); }
+	.header-actions { display: flex; gap: 6px; }
 	.mark-all-btn {
 		padding: 4px 10px;
 		border-radius: 6px;

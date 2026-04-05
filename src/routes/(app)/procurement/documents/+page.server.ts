@@ -10,7 +10,7 @@ import {
 	agencies,
 	provinces
 } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import { createDocumentSchema, parseFormData } from '$lib/server/validation/schemas';
 
 export const load: PageServerLoad = async ({ parent, url }) => {
@@ -43,7 +43,15 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 	let documentList: any[] = [];
 	let leafPlanList: any[] = [];
 
+	// Load fiscal years for filtering
+	let fyList: { id: number; year_name: string; is_active: boolean }[] = [];
+
 	if (agencyId) {
+		fyList = await db
+			.select({ id: fiscalYears.id, year_name: fiscalYears.year_name, is_active: fiscalYears.is_active })
+			.from(fiscalYears)
+			.where(eq(fiscalYears.agency_id, agencyId));
+
 		documentList = await db
 			.select({
 				id: documents.id,
@@ -52,6 +60,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 				workflow_name: workflows.name,
 				plan_id: documents.plan_id,
 				plan_title: plans.title,
+				fiscal_year_id: plans.fiscal_year_id,
 				current_step_id: documents.current_step_id,
 				payload: documents.payload,
 				status: documents.status
@@ -59,7 +68,8 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 			.from(documents)
 			.innerJoin(workflows, eq(documents.workflow_id, workflows.id))
 			.innerJoin(plans, eq(documents.plan_id, plans.id))
-			.where(eq(documents.agency_id, agencyId));
+			.where(eq(documents.agency_id, agencyId))
+			.orderBy(asc(documents.id));
 
 		leafPlanList = await db
 			.select({
@@ -67,7 +77,8 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 				title: plans.title,
 				estimated_amount: plans.estimated_amount,
 				actual_amount: plans.actual_amount,
-				fiscal_year: fiscalYears.year_name
+				fiscal_year: fiscalYears.year_name,
+				fiscal_year_id: fiscalYears.id
 			})
 			.from(plans)
 			.innerJoin(fiscalYears, eq(plans.fiscal_year_id, fiscalYears.id))
@@ -80,6 +91,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 		workflows: workflowList,
 		workflowSteps: stepsList,
 		leafPlans: leafPlanList,
+		fiscalYears: fyList,
 		provinces: provincesList,
 		agencies: agencyList,
 		selectedProvinceId,

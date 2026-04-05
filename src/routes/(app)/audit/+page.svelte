@@ -8,7 +8,14 @@
 	let expandedId = $state<string | null>(null);
 	let currentPage = $state(1);
 	let searchQuery = $state('');
+	let selectedFyId = $state<number | null>(null);
 	const perPage = 15;
+
+	$effect(() => {
+		if (selectedFyId === null && data.fiscalYears?.length > 0) {
+			selectedFyId = data.fiscalYears.find((fy: any) => fy.is_active)?.id ?? null;
+		}
+	});
 
 	const allCollections = [
 		{ key: 'plan_budget_histories', label: 'แผนงาน / งบประมาณ' },
@@ -36,12 +43,23 @@
 	};
 
 	let filteredRecords = $derived.by(() => {
-		if (!searchQuery.trim()) return data.records;
-		const q = searchQuery.trim().toLowerCase();
-		return data.records.filter((r: any) =>
-			(r.action_by?.name || '').toLowerCase().includes(q) ||
-			(r.action_type || '').toLowerCase().includes(q)
-		);
+		let records = data.records;
+		// Filter by fiscal year (if record has fiscal_year_id in payload)
+		if (selectedFyId) {
+			records = records.filter((r: any) => {
+				const fyId = r.payload_snapshot?.fiscal_year_id || r.fiscal_year_id;
+				if (fyId) return fyId === selectedFyId;
+				return true; // keep records without fiscal year info
+			});
+		}
+		if (searchQuery.trim()) {
+			const q = searchQuery.trim().toLowerCase();
+			records = records.filter((r: any) =>
+				(r.action_by?.name || '').toLowerCase().includes(q) ||
+				(r.action_type || '').toLowerCase().includes(q)
+			);
+		}
+		return records;
 	});
 
 	let paginatedRecords = $derived(
@@ -143,6 +161,19 @@
 			<span class="tab-count">{filteredRecords.length} รายการ</span>
 		{/if}
 	</div>
+
+	<!-- Fiscal Year Filter -->
+	{#if data.fiscalYears?.length > 0}
+		<div class="fy-bar">
+			<button class="fy-btn" class:fy-active={!selectedFyId} onclick={() => { selectedFyId = null; currentPage = 1; }}>ทุกปี</button>
+			{#each data.fiscalYears as fy}
+				<button class="fy-btn" class:fy-active={selectedFyId === fy.id} onclick={() => { selectedFyId = fy.id; currentPage = 1; }}>
+					{fy.year_name}
+					{#if fy.is_active}<span class="fy-dot"></span>{/if}
+				</button>
+			{/each}
+		</div>
+	{/if}
 
 	{#if !data.selectedAgencyId && data.user.is_super_admin}
 		<div class="empty-state">
@@ -281,6 +312,13 @@
 	.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 	.page-btn svg { width: 14px; height: 14px; }
 	.page-active { background: oklch(0.52 0.14 240); color: oklch(0.98 0.005 180); border-color: oklch(0.52 0.14 240); }
+
+	/* Fiscal Year */
+	.fy-bar { display: flex; gap: 2px; margin-bottom: 16px; }
+	.fy-btn { padding: 6px 14px; border: none; border-radius: 8px; background: transparent; font-family: 'Noto Sans Thai', sans-serif; font-size: 0.8125rem; font-weight: 500; color: oklch(0.5 0.02 180); cursor: pointer; transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1); }
+	.fy-btn:hover { color: oklch(0.4 0.04 180); background: oklch(0.52 0.14 240 / 0.04); }
+	.fy-active { color: oklch(0.42 0.14 240); background: oklch(0.52 0.14 240 / 0.08); font-weight: 600; }
+	.fy-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: oklch(0.54 0.16 150); margin-left: 4px; vertical-align: middle; }
 
 	@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 	@keyframes slide-down { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }

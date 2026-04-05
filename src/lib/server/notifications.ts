@@ -72,3 +72,9 @@ export async function markAllAsRead(userId: number) {
 		.set({ is_read: true })
 		.where(and(eq(notifications.user_id, userId), eq(notifications.is_read, false)));
 }
+
+export async function deleteReadNotifications(userId: number) {
+	return db
+		.delete(notifications)
+		.where(and(eq(notifications.user_id, userId), eq(notifications.is_read, true)));
+}
