@@ -12,7 +12,8 @@ import {
 	approvals,
 	dikaVouchers,
 	users,
-	bankAccounts
+	bankAccounts,
+	agencies
 } from '$lib/server/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { writeAuditLog } from '$lib/server/db/audit';
@@ -106,6 +107,18 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		.from(bankAccounts)
 		.where(eq(bankAccounts.agency_id, doc.agency_id));
 
+	// Fetch dika voucher for this document (if exists)
+	const [dikaVoucher] = await db
+		.select({
+			id: dikaVouchers.id,
+			status: dikaVouchers.status,
+			gross_amount: dikaVouchers.gross_amount,
+			net_amount: dikaVouchers.net_amount,
+			tax_amount: dikaVouchers.tax_amount
+		})
+		.from(dikaVouchers)
+		.where(eq(dikaVouchers.document_id, docId));
+
 	const currentStep = steps.find((s) => s.id === doc.current_step_id);
 
 	// Check if current user is assigned to the current step
@@ -142,7 +155,8 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		vendors: vendorList,
 		users: userList,
 		bankAccounts: accounts,
-		canActOnStep
+		canActOnStep,
+		dikaVoucher: dikaVoucher || null
 	};
 };
 
@@ -194,6 +208,11 @@ export const actions: Actions = {
 
 			const currentStep = steps.find((s) => s.id === doc.current_step_id);
 			if (!currentStep) return fail(400, { success: false, errors: { step: ['ไม่พบขั้นตอนปัจจุบัน'] } });
+
+			// Prevent manual advancement of waiting-for-finance steps
+			if ((currentStep.ui_schema as any)?.type === 'waiting_for_finance') {
+				return fail(400, { success: false, errors: { step: ['ขั้นตอนนี้จะเสร็จสมบูรณ์อัตโนมัติเมื่อแผนกการเงินจ่ายเงินแล้ว'] } });
+			}
 
 			const stepKey = `step_${currentStep.step_sequence}_${currentStep.step_name.replace(/\s+/g, '_').substring(0, 30)}`;
 
@@ -249,12 +268,18 @@ export const actions: Actions = {
 				.where(eq(documents.id, docId));
 
 			if (locals.user) {
+				const [agencyRow] = await db.select({ name: agencies.name }).from(agencies).where(eq(agencies.id, doc.agency_id));
+				const [planRow] = await db.select({ title: plans.title }).from(plans).where(eq(plans.id, doc.plan_id));
 				await writeAuditLog({
 					collection: 'doc_payload_histories',
 					action_type: 'STEP_ADVANCE',
 					agency_id: doc.agency_id,
+					agency_name: agencyRow?.name || '',
 					document_id: docId,
+					plan_id: doc.plan_id,
+					plan_name: planRow?.title || '',
 					step_id: currentStep.id,
+					step_name: currentStep.step_name,
 					payload_snapshot: updatedPayload,
 					diff: parsedData,
 					action_by: {
@@ -466,11 +491,16 @@ export const actions: Actions = {
 			// Write audit log for approve/reject
 			if (locals.user) {
 				const [stepForAudit] = await db.select({ step_name: workflowSteps.step_name }).from(workflowSteps).where(eq(workflowSteps.id, step_id));
+				const [agencyRow] = await db.select({ name: agencies.name }).from(agencies).where(eq(agencies.id, doc.agency_id));
+				const [planRow] = await db.select({ title: plans.title }).from(plans).where(eq(plans.id, doc.plan_id));
 				await writeAuditLog({
 					collection: 'doc_payload_histories',
 					action_type: action === 'APPROVED' ? 'STEP_APPROVED' : 'STEP_REJECTED',
 					agency_id: doc.agency_id,
+					agency_name: agencyRow?.name || '',
 					document_id: docId,
+					plan_id: doc.plan_id,
+					plan_name: planRow?.title || '',
 					step_id,
 					step_name: stepForAudit?.step_name || '',
 					comment: comment ?? null,
@@ -529,12 +559,23 @@ export const actions: Actions = {
 
 			// Write audit log
 			if (locals.user) {
+				const [agencyRow] = await db.select({ name: agencies.name }).from(agencies).where(eq(agencies.id, doc.agency_id));
+				const [planRow] = await db.select({ title: plans.title }).from(plans).where(eq(plans.id, doc.plan_id));
+				const [vendorRow] = await db.select({ company_name: vendors.company_name }).from(vendors).where(eq(vendors.id, winner.vendor_id));
 				await writeAuditLog({
 					collection: 'doc_payload_histories',
 					action_type: 'GENERATE_DIKA',
 					agency_id: doc.agency_id,
+					agency_name: agencyRow?.name || '',
 					document_id: docId,
-					dika_data: { gross_amount, fine_amount, tax_amount, net_amount: net.toFixed(2), vendor_id: winner.vendor_id },
+					plan_id: doc.plan_id,
+					plan_name: planRow?.title || '',
+					dika_data: {
+						gross_amount, fine_amount, tax_amount,
+						net_amount: net.toFixed(2),
+						vendor_id: winner.vendor_id,
+						vendor_name: vendorRow?.company_name || ''
+					},
 					action_by: {
 						user_id: locals.user.sub,
 						name: locals.user.name,
@@ -543,7 +584,65 @@ export const actions: Actions = {
 				});
 			}
 
-			return { success: true, message: 'สร้างฎีกาเบิกจ่ายสำเร็จ' };
+			// Auto-advance to the next step ("รอการเงินเบิกจ่าย")
+			const allSteps = await db
+				.select()
+				.from(workflowSteps)
+				.where(eq(workflowSteps.workflow_id, doc.workflow_id))
+				.orderBy(asc(workflowSteps.step_sequence));
+
+			const currentStep = allSteps.find((s) => s.id === doc.current_step_id);
+			if (currentStep) {
+				const nextStep = allSteps.find((s) => s.step_sequence === currentStep.step_sequence + 1);
+				if (nextStep) {
+					const stepKey = `step_${currentStep.step_sequence}_${currentStep.step_name.replace(/\s+/g, '_').substring(0, 30)}`;
+					const updatedPayload = {
+						...(doc.payload as Record<string, unknown>),
+						[stepKey]: {
+							_meta: 'สร้างฎีกาเบิกจ่ายและส่งไปยังแผนกการเงินแล้ว',
+							completed_at: new Date().toISOString(),
+							completed_by: locals.user?.sub || null,
+							completed_by_name: locals.user?.name || null,
+							dika_data: { gross_amount, fine_amount, tax_amount, net_amount: net.toFixed(2) }
+						}
+					};
+
+					await db
+						.update(documents)
+						.set({
+							payload: updatedPayload,
+							current_step_id: nextStep.id,
+							status: 'IN_PROGRESS',
+							updated_by: locals.user?.sub || null
+						})
+						.where(eq(documents.id, docId));
+
+					// Complete current user's assignment
+					if (locals.user) {
+						await completeAssignment(docId, currentStep.id, locals.user.sub);
+					}
+				}
+			}
+
+			// Notify finance head about new dika
+			const { orgUnits } = await import('$lib/server/db/schema');
+			const finHeadResult = await db
+				.select({ head_of_unit_id: orgUnits.head_of_unit_id, name: orgUnits.name })
+				.from(orgUnits)
+				.where(eq(orgUnits.agency_id, doc.agency_id));
+			const finUnit = finHeadResult.find((u) => u.name.includes('การเงิน') || u.name.includes('คลัง'));
+			if (finUnit?.head_of_unit_id) {
+				await createNotification({
+					userId: finUnit.head_of_unit_id,
+					documentId: docId,
+					title: 'ฎีกาใหม่รอตรวจสอบ',
+					message: `ฎีกาเบิกจ่ายสำหรับเอกสาร #${docId} ถูกสร้างแล้ว — กรุณาตรวจสอบ (${net.toFixed(2)} บาท)`,
+					actionUrl: '/finance',
+					notificationType: 'APPROVAL_REQUIRED'
+				});
+			}
+
+			return { success: true, message: 'สร้างฎีกาเบิกจ่ายสำเร็จ — ส่งไปยังแผนกการเงินแล้ว' };
 		} catch (err) {
 			console.error('Generate dika error:', err);
 			return fail(500, { success: false, errors: { gross_amount: ['เกิดข้อผิดพลาด กรุณาลองใหม่'] } });

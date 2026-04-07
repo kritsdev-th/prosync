@@ -17,7 +17,7 @@ import {
 import { eq, or, and, isNull } from 'drizzle-orm';
 import { writeAuditLog } from '$lib/server/db/audit';
 import { createNotification, markReadByDocument } from '$lib/server/notifications';
-import { users, orgUnits, documents } from '$lib/server/db/schema';
+import { users, orgUnits, documents, workflowSteps } from '$lib/server/db/schema';
 import { approveDikaSchema, createBankAccountSchema, createLoanSchema, approveLoanSchema, repayLoanSchema, parseFormData } from '$lib/server/validation/schemas';
 
 interface DikaRow {
@@ -202,6 +202,16 @@ export const actions: Actions = {
 				return finUnit?.head_of_unit_id || null;
 			};
 
+			// Resolve names for audit log
+			const [agencyRow] = await db.select({ name: agencies.name }).from(agencies).where(eq(agencies.id, dika.agency_id));
+			const [planRow] = dika.plan_id ? await db.select({ title: plans.title }).from(plans).where(eq(plans.id, dika.plan_id)) : [null];
+			const [vendorRow] = dika.vendor_id ? await db.select({ company_name: vendors.company_name }).from(vendors).where(eq(vendors.id, dika.vendor_id)) : [null];
+			const auditNames = {
+				agency_name: agencyRow?.name || '',
+				plan_name: planRow?.title || '',
+				vendor_name: vendorRow?.company_name || ''
+			};
+
 			// Mark current user's notifications for this document as read
 			if (dika.document_id) {
 				await markReadByDocument(locals.user!.sub, dika.document_id);
@@ -229,6 +239,7 @@ export const actions: Actions = {
 						collection: 'bank_transaction_histories',
 						action_type: 'DIKA_EXAMINED',
 						agency_id: dika.agency_id,
+						...auditNames,
 						dika_voucher_id: dika_id,
 						document_id: dika.document_id,
 						net_amount: dika.net_amount,
@@ -259,6 +270,7 @@ export const actions: Actions = {
 						collection: 'bank_transaction_histories',
 						action_type: 'DIKA_APPROVED',
 						agency_id: dika.agency_id,
+						...auditNames,
 						dika_voucher_id: dika_id,
 						document_id: dika.document_id,
 						net_amount: dika.net_amount,
@@ -330,6 +342,7 @@ export const actions: Actions = {
 						collection: 'bank_transaction_histories',
 						action_type: 'SYSTEM_SETTLE',
 						agency_id: dika.agency_id,
+						...auditNames,
 						bank_transaction_id: dika_id,
 						amount_change: { old: 0, new: Number(dika.net_amount) },
 						action_by: {
@@ -352,6 +365,35 @@ export const actions: Actions = {
 							actionUrl: '/finance',
 							notificationType: 'UPLOAD_REQUIRED'
 						});
+					}
+				}
+
+				// Auto-complete the final procurement step ("รอการเงินเบิกจ่าย")
+				if (dika.document_id) {
+					const [procDoc] = await db.select().from(documents).where(eq(documents.id, dika.document_id));
+					if (procDoc && procDoc.status === 'IN_PROGRESS') {
+						const steps = await db.select().from(workflowSteps)
+							.where(eq(workflowSteps.workflow_id, procDoc.workflow_id))
+							.orderBy(workflowSteps.step_sequence);
+						const finalStep = steps.find((s) => s.is_final_step);
+						// Only auto-complete if doc is on the waiting-for-finance step
+						if (finalStep && procDoc.current_step_id === finalStep.id) {
+							const stepKey = `step_${finalStep.step_sequence}_${finalStep.step_name.replace(/\s+/g, '_').substring(0, 30)}`;
+							const updatedPayload = {
+								...(typeof procDoc.payload === 'string' ? JSON.parse(procDoc.payload) : procDoc.payload) as Record<string, unknown>,
+								[stepKey]: {
+									_meta: 'เบิกจ่ายสำเร็จ — แผนกการเงินจ่ายเงินเรียบร้อยแล้ว',
+									completed_at: new Date().toISOString(),
+									completed_by: locals.user?.sub || null,
+									completed_by_name: locals.user?.name || null,
+									dika_voucher_id: dika_id
+								}
+							};
+							await db.update(documents).set({
+								payload: updatedPayload,
+								status: 'APPROVED_PROCUREMENT'
+							}).where(eq(documents.id, dika.document_id));
+						}
 					}
 				}
 
@@ -382,6 +424,7 @@ export const actions: Actions = {
 						collection: 'bank_transaction_histories',
 						action_type: 'DIKA_REJECTED',
 						agency_id: dika.agency_id,
+						...auditNames,
 						dika_voucher_id: dika_id,
 						document_id: dika.document_id,
 						net_amount: dika.net_amount,

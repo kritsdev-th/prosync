@@ -180,11 +180,15 @@ export const actions: Actions = {
 				.returning();
 
 			if (locals.user) {
+				// Resolve names for audit log
+				const [agencyRow] = await db.select({ name: agencies.name }).from(agencies).where(eq(agencies.id, agency_id));
 				await writeAuditLog({
 					collection: 'plan_budget_histories',
 					action_type: 'CREATE',
 					agency_id,
+					agency_name: agencyRow?.name || '',
 					plan_id: created.id,
+					plan_name: title,
 					changes: {
 						estimated_amount: { old: 0, new: Number(estimated_amount) || 0 },
 						actual_amount: { old: 0, new: 0 }
@@ -254,11 +258,14 @@ export const actions: Actions = {
 				.where(eq(plans.id, id));
 
 			if (locals.user && oldPlan) {
+				const [agencyRow] = await db.select({ name: agencies.name }).from(agencies).where(eq(agencies.id, oldPlan.agency_id));
 				await writeAuditLog({
 					collection: 'plan_budget_histories',
 					action_type: 'MANUAL_ADJUST',
 					agency_id: oldPlan.agency_id,
+					agency_name: agencyRow?.name || '',
 					plan_id: id,
+					plan_name: title,
 					changes: {
 						estimated_amount: {
 							old: Number(oldPlan.estimated_amount),
@@ -295,11 +302,14 @@ export const actions: Actions = {
 			await db.delete(plans).where(eq(plans.id, id));
 
 			if (locals.user && oldPlan) {
+				const [agencyRow] = await db.select({ name: agencies.name }).from(agencies).where(eq(agencies.id, oldPlan.agency_id));
 				await writeAuditLog({
 					collection: 'plan_budget_histories',
 					action_type: 'DELETE',
 					agency_id: oldPlan.agency_id,
+					agency_name: agencyRow?.name || '',
 					plan_id: id,
+					plan_name: oldPlan.title,
 					changes: {
 						estimated_amount: { old: Number(oldPlan.estimated_amount), new: 0 },
 						actual_amount: { old: Number(oldPlan.actual_amount), new: 0 }

@@ -254,14 +254,23 @@
 			{/if}
 		</div>
 
-		<!-- Budget by org unit -->
-		{#if chartData.budgetByUnit && chartData.budgetByUnit.length > 0}
-			<div class="full-width-card">
-				<ProgressChart
-					title="งบประมาณแยกตามหน่วยงานย่อย"
-					subtitle="หน่วยงานที่มีงบประมาณสูงสุด"
-					items={chartData.budgetByUnit}
-				/>
+		<!-- Budget by org unit — split income/expense -->
+		{#if (chartData.budgetByUnitIncome && chartData.budgetByUnitIncome.length > 0) || (chartData.budgetByUnitExpense && chartData.budgetByUnitExpense.length > 0)}
+			<div class="grid-2col">
+				{#if chartData.budgetByUnitIncome && chartData.budgetByUnitIncome.length > 0}
+					<ProgressChart
+						title="งบประมาณรายรับแยกตามหน่วยงาน"
+						subtitle="หน่วยงานที่มีรายรับสูงสุด"
+						items={chartData.budgetByUnitIncome}
+					/>
+				{/if}
+				{#if chartData.budgetByUnitExpense && chartData.budgetByUnitExpense.length > 0}
+					<ProgressChart
+						title="งบประมาณรายจ่ายแยกตามหน่วยงาน"
+						subtitle="หน่วยงานที่มีรายจ่ายสูงสุด"
+						items={chartData.budgetByUnitExpense}
+					/>
+				{/if}
 			</div>
 		{/if}
 

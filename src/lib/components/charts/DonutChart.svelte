@@ -44,8 +44,8 @@
 					{@const totalValue = data.reduce((sum, item) => sum + item.value, 0)}
 					{#each data as item, index (item.label)}
 						{@const percentage = item.value / totalValue}
-						{@const strokeDasharray = percentage * circumference}
-						{@const strokeDashoffset = -data.slice(0, index).reduce((sum, d) => sum + (d.value / totalValue) * circumference, 0)}
+						{@const arcLength = percentage * circumference}
+						{@const offset = data.slice(0, index).reduce((sum, d) => sum + (d.value / totalValue) * circumference, 0)}
 						<circle
 							class="donut-segment"
 							cx="80"
@@ -54,8 +54,8 @@
 							fill="none"
 							stroke={item.color ?? colors[index % colors.length]}
 							stroke-width="24"
-							stroke-dasharray={strokeDasharray}
-							stroke-dashoffset={strokeDashoffset}
+							stroke-dasharray="{arcLength} {circumference - arcLength}"
+							stroke-dashoffset={-offset}
 							transform="rotate(-90 80 80)"
 							style="transition: stroke-dasharray 0.6s ease-out-expo, stroke-dashoffset 0.6s ease-out-expo;"
 						/>

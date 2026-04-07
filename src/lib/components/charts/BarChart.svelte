@@ -10,7 +10,10 @@
 
 	let { data, title, subtitle, maxValue }: Props = $props();
 
-	let displayMax = $derived(maxValue ?? Math.max(...data.map((d) => d.value)) * 1.1);
+	// Sort data from highest to lowest value
+	let sortedData = $derived([...data].sort((a, b) => b.value - a.value));
+
+	let displayMax = $derived(maxValue ?? Math.max(...sortedData.map((d) => d.value)) * 1.1);
 
 	const colors = [
 		'oklch(0.52 0.14 240)',
@@ -34,7 +37,7 @@
 
 	<div class="chart-content">
 		<div class="bars-container">
-			{#each data as item, index (item.label)}
+			{#each sortedData as item, index (item.label)}
 				{@const barHeight = Math.max((item.value / displayMax) * 100, 2)}
 				<div class="bar-item">
 					<div class="bar-value">{item.value.toLocaleString()}</div>

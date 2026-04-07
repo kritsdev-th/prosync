@@ -279,22 +279,35 @@ export const load: PageServerLoad = async ({ parent, url }) => {
       .orderBy(desc(sql`SUM(${plans.estimated_amount})`))
       .limit(8);
 
-    chartData.budgetByUnit = budgetByUnit.map((b) => {
-      const used = Number(b.used_budget) || 0;
-      const total = Number(b.total_budget) || 1;
-      const isOver = used > total;
-      return {
-        label: `${b.unit_name} (${b.plan_type === "INCOME" ? "รายรับ" : "รายจ่าย"})`,
-        value: used,
-        max: total,
-        color:
-          b.plan_type === "INCOME"
-            ? "oklch(0.54 0.16 150)"
-            : isOver
-              ? "oklch(0.58 0.2 25)"
-              : "oklch(0.52 0.14 240)",
-      };
-    });
+    const incomeByUnit = budgetByUnit
+      .filter((b) => b.plan_type === "INCOME")
+      .map((b) => {
+        const used = Number(b.used_budget) || 0;
+        const total = Number(b.total_budget) || 1;
+        return {
+          label: b.unit_name,
+          value: used,
+          max: total,
+          color: "oklch(0.54 0.16 150)",
+        };
+      });
+
+    const expenseByUnit = budgetByUnit
+      .filter((b) => b.plan_type === "EXPENSE")
+      .map((b) => {
+        const used = Number(b.used_budget) || 0;
+        const total = Number(b.total_budget) || 1;
+        const isOver = used > total;
+        return {
+          label: b.unit_name,
+          value: used,
+          max: total,
+          color: isOver ? "oklch(0.58 0.2 25)" : "oklch(0.52 0.14 240)",
+        };
+      });
+
+    chartData.budgetByUnitIncome = incomeByUnit;
+    chartData.budgetByUnitExpense = expenseByUnit;
 
     // ── 6. Staff by role (bar chart) ──
     const staffByRole = await db

@@ -8,6 +8,7 @@
 	import CustomSelect from '$lib/components/CustomSelect.svelte';
 	import CustomDatePicker from '$lib/components/CustomDatePicker.svelte';
 	import { formatBaht, formatNumber, exportToCsv } from '$lib/utils/format';
+	import { getBankLogo } from '$lib/utils/bank-logo';
 	import { watchFormResult } from '$lib/stores/toast.svelte';
 	import { decrementFinance } from '$lib/stores/taskCounts.svelte';
 
@@ -313,9 +314,12 @@
 		{/if}
 		<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 			{#each data.bankAccounts as account}
-				<div class="rounded-xl border bg-white p-5 shadow-sm">
+				{@const bankInfo = getBankLogo(account.bank_code)}
+				<div class="rounded-xl border bg-white p-5 shadow-sm" style="{bankInfo ? `border-left: 3px solid ${bankInfo.color}` : ''}">
 					<div class="flex items-center gap-3">
-						{#if account.bank_logo}
+						{#if bankInfo?.icon}
+							<img src={bankInfo.icon} alt={account.bank_name} class="bank-logo" />
+						{:else if account.bank_logo}
 							<img src={account.bank_logo} alt={account.bank_name} class="bank-logo" />
 						{:else}
 							<div class="bank-logo-fallback">{account.bank_code}</div>

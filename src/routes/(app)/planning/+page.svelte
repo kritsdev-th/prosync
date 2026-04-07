@@ -29,10 +29,12 @@
 
 	// Search & Filters
 	let searchQuery = $state('');
+	let filterPlanTypeStr = $state('');
 	let filterResponsibleUnitStr = $state('');
 	let filterStakeholderUnitStr = $state('');
 	let filterBudgetMin = $state('');
 	let filterBudgetMax = $state('');
+	let filterPlanType = $derived(filterPlanTypeStr || null);
 	let filterResponsibleUnit = $derived(filterResponsibleUnitStr ? Number(filterResponsibleUnitStr) : null);
 	let filterStakeholderUnit = $derived(filterStakeholderUnitStr ? Number(filterStakeholderUnitStr) : null);
 
@@ -67,11 +69,13 @@
 		const bMin = filterBudgetMin ? Number(filterBudgetMin) : null;
 		const bMax = filterBudgetMax ? Number(filterBudgetMax) : null;
 
-		const hasFilter = q || rUnit || sUnit || bMin !== null || bMax !== null;
+		const pType = filterPlanType;
+		const hasFilter = q || pType || rUnit || sUnit || bMin !== null || bMax !== null;
 		if (!hasFilter) return data.plans;
 
 		// Check if a single plan matches the non-search filters
 		function matchesFilters(p: any): boolean {
+			if (pType && p.plan_type !== pType) return false;
 			if (rUnit && p.responsible_unit_id !== rUnit) return false;
 			if (sUnit && !(Array.isArray(p.stakeholder_unit_ids) && p.stakeholder_unit_ids.includes(sUnit))) return false;
 			const est = Number(p.estimated_amount);
@@ -80,10 +84,30 @@
 			return true;
 		}
 
-		// Check if plan title matches search query (partial match)
+		// Check if plan matches search query across all fields
 		function matchesSearch(p: any): boolean {
 			if (!q) return true;
-			return p.title.toLowerCase().includes(q);
+			// Title
+			if (p.title.toLowerCase().includes(q)) return true;
+			// Budget amounts
+			const estStr = Number(p.estimated_amount).toLocaleString();
+			const actStr = Number(p.actual_amount).toLocaleString();
+			if (String(p.estimated_amount).includes(q) || estStr.includes(q)) return true;
+			if (String(p.actual_amount).includes(q) || actStr.includes(q)) return true;
+			// Duration
+			if (p.duration_text && p.duration_text.toLowerCase().includes(q)) return true;
+			// Dates
+			if (p.start_date && p.start_date.includes(q)) return true;
+			if (p.end_date && p.end_date.includes(q)) return true;
+			// Plan type
+			const typeLabel = p.plan_type === 'INCOME' ? 'รายรับ' : 'รายจ่าย';
+			if (typeLabel.includes(q)) return true;
+			// Responsible unit name
+			const unitName = getOrgUnitName(p.responsible_unit_id);
+			if (unitName && unitName.toLowerCase().includes(q)) return true;
+			// Description
+			if (p.description && p.description.toLowerCase().includes(q)) return true;
+			return false;
 		}
 
 		// Find all plan IDs that directly match
@@ -142,7 +166,7 @@
 
 	// Auto-expand all when searching
 	$effect(() => {
-		if (searchQuery.trim() || filterResponsibleUnit || filterStakeholderUnit || filterBudgetMin || filterBudgetMax) {
+		if (searchQuery.trim() || filterPlanType || filterResponsibleUnit || filterStakeholderUnit || filterBudgetMin || filterBudgetMax) {
 			collapsed = new Set();
 		}
 	});
@@ -232,7 +256,7 @@
 							</span>
 							{#if node.is_leaf_node}
 								<span class="shrink-0 rounded px-1.5 py-0.5 text-[0.625rem] font-medium"
-									style="background: var(--color-info-muted); color: var(--color-brand-700)">Leaf</span>
+									style="background: var(--color-info-muted); color: var(--color-brand-700)">พร้อมจัดซื้อ</span>
 							{/if}
 						</div>
 
@@ -384,23 +408,32 @@
 		<div class="mt-2 flex items-center gap-2 flex-wrap">
 			<div class="relative flex-[2]" style="min-width: 10rem">
 				<svg class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" style="color: var(--color-slate-400)" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
-				<input type="text" placeholder="ค้นหาชื่อแผนงาน..."
+				<input type="text" placeholder="ค้นหาชื่อแผน, งบประมาณ, ระยะเวลา, หน่วยงาน..."
 					bind:value={searchQuery}
 					class="w-full rounded-md py-1.5 pl-8 pr-2 text-[0.8125rem] outline-none"
 					style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white" />
 			</div>
-			<CustomSelect
-				bind:value={filterResponsibleUnitStr}
-				options={data.orgUnits.map((u) => ({ value: String(u.id), label: u.name }))}
-				placeholder="หน่วยงานรับผิดชอบ"
-				class="flex-1"
-			/>
-			<CustomSelect
-				bind:value={filterStakeholderUnitStr}
-				options={data.orgUnits.map((u) => ({ value: String(u.id), label: u.name }))}
-				placeholder="ผู้เกี่ยวข้อง"
-				class="flex-1"
-			/>
+			<div style="flex: 1 1 0; min-width: 8rem">
+				<CustomSelect
+					bind:value={filterPlanTypeStr}
+					options={[{ value: 'INCOME', label: 'แผนรายรับ' }, { value: 'EXPENSE', label: 'แผนรายจ่าย' }]}
+					placeholder="ประเภทแผน"
+				/>
+			</div>
+			<div style="flex: 1 1 0; min-width: 8rem">
+				<CustomSelect
+					bind:value={filterResponsibleUnitStr}
+					options={data.orgUnits.map((u) => ({ value: String(u.id), label: u.name }))}
+					placeholder="หน่วยงานรับผิดชอบ"
+				/>
+			</div>
+			<div style="flex: 1 1 0; min-width: 8rem">
+				<CustomSelect
+					bind:value={filterStakeholderUnitStr}
+					options={data.orgUnits.map((u) => ({ value: String(u.id), label: u.name }))}
+					placeholder="ผู้เกี่ยวข้อง"
+				/>
+			</div>
 			<div class="flex items-center gap-1.5">
 				<input type="number" placeholder="งบต่ำสุด" step="1000"
 					bind:value={filterBudgetMin}
@@ -413,8 +446,8 @@
 					style="border: 1px solid var(--color-slate-200); color: var(--color-slate-900); background: white" />
 				<span class="text-[0.75rem] font-medium" style="color: var(--color-slate-400)">บาท</span>
 			</div>
-			{#if searchQuery || filterResponsibleUnitStr || filterStakeholderUnitStr || filterBudgetMin || filterBudgetMax}
-				<button onclick={() => { searchQuery = ''; filterResponsibleUnitStr = ''; filterStakeholderUnitStr = ''; filterBudgetMin = ''; filterBudgetMax = ''; }}
+			{#if searchQuery || filterPlanTypeStr || filterResponsibleUnitStr || filterStakeholderUnitStr || filterBudgetMin || filterBudgetMax}
+				<button onclick={() => { searchQuery = ''; filterPlanTypeStr = ''; filterResponsibleUnitStr = ''; filterStakeholderUnitStr = ''; filterBudgetMin = ''; filterBudgetMax = ''; }}
 					class="rounded-md px-2.5 py-1.5 text-[0.75rem] font-medium transition-colors duration-150"
 					style="color: var(--color-error); background: var(--color-error-muted)">
 					ล้างตัวกรอง
@@ -428,7 +461,7 @@
 		<div class="p-4">
 			{#if tree.length === 0}
 				<div class="py-16 text-center" style="color: var(--color-slate-400)">
-					<p class="text-sm">{data.selectedAgencyId ? (searchQuery || filterResponsibleUnit || filterStakeholderUnit || filterBudgetMin || filterBudgetMax ? 'ไม่พบแผนงานที่ตรงกับเงื่อนไข' : 'ยังไม่มีแผนงาน') : 'กรุณาเลือกหน่วยงานก่อน'}</p>
+					<p class="text-sm">{data.selectedAgencyId ? (searchQuery || filterPlanType || filterResponsibleUnit || filterStakeholderUnit || filterBudgetMin || filterBudgetMax ? 'ไม่พบแผนงานที่ตรงกับเงื่อนไข' : 'ยังไม่มีแผนงาน') : 'กรุณาเลือกหน่วยงานก่อน'}</p>
 				</div>
 			{:else}
 				<!-- Count + collapse all -->
@@ -666,7 +699,7 @@
 						<label class="flex items-center gap-2 text-sm cursor-pointer" style="color: var(--color-slate-700)">
 							<input type="checkbox" name="is_leaf_node" value="true" style="accent-color: var(--color-brand-600)"
 								onchange={(e) => { createIsLeaf = (e.target as HTMLInputElement).checked; }} />
-							Leaf Node (พร้อมจัดซื้อ)
+							รายการพร้อมจัดซื้อจัดจ้าง
 						</label>
 						{#if createIsLeaf}
 							<div class="flex-1">
@@ -808,7 +841,7 @@
 						<label class="flex items-center gap-2 text-sm cursor-pointer" style="color: var(--color-slate-700)">
 							<input type="checkbox" name="is_leaf_node" value="true" checked={editingPlan.is_leaf_node} style="accent-color: var(--color-brand-600)"
 								onchange={(e) => { editIsLeaf = (e.target as HTMLInputElement).checked; }} />
-							Leaf Node (พร้อมจัดซื้อ)
+							รายการพร้อมจัดซื้อจัดจ้าง
 						</label>
 						{#if editIsLeaf}
 							<div class="flex-1">
@@ -868,7 +901,7 @@
 							{viewingPlan.plan_type === 'INCOME' ? 'รายรับ' : 'รายจ่าย'}
 						</span>
 						{#if viewingPlan.is_leaf_node}
-							<span class="rounded px-1.5 py-0.5 text-[0.625rem] font-medium" style="background: var(--color-info-muted); color: var(--color-brand-700)">Leaf</span>
+							<span class="rounded px-1.5 py-0.5 text-[0.625rem] font-medium" style="background: var(--color-info-muted); color: var(--color-brand-700)">พร้อมจัดซื้อ</span>
 						{/if}
 					</div>
 					{#if vParent}

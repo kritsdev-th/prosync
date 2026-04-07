@@ -116,6 +116,14 @@
 					<p class="step-label step-label--{status}">
 						{step.step_name}
 					</p>
+					{#if Array.isArray(step.step_assignees) && step.step_assignees.length > 0}
+						<p class="step-assignee">
+							{#each step.step_assignees as a, ai}
+								{#if ai > 0}, {/if}
+								{#if a.type === 'creator'}ผู้จัดทำ{:else if a.type === 'role' && a.value === 'DIRECTOR'}ผอ./ผู้บังคับบัญชา{:else if a.type === 'role' && a.value === 'REVIEWER'}ผู้ตรวจสอบ{:else if a.type === 'committee'}กก.{a.value === 'INSPECTION' ? 'ตรวจรับ' : a.value === 'TOR' ? 'TOR' : a.value === 'PROCUREMENT' ? 'จัดซื้อ' : a.value}{:else if a.type === 'system'}ระบบอัตโนมัติ{:else}{a.type}{/if}
+							{/each}
+						</p>
+					{/if}
 				</div>
 			{/each}
 		</div>
@@ -128,7 +136,43 @@
 				ขั้นตอนที่ {data.currentStep.step_sequence}: {data.currentStep.step_name}
 			</h2>
 
-			{#if !data.canActOnStep}
+			{#if uiSchema?.type === 'waiting_for_finance'}
+				<!-- Waiting for finance step — passive/informational -->
+				<div class="mt-4 space-y-4">
+					<div class="rounded-lg border-2 border-dashed p-5 text-center" style="border-color: oklch(0.75 0.15 85); background: oklch(0.75 0.15 85 / 0.06);">
+						<div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full" style="background: oklch(0.75 0.15 85 / 0.15);">
+							<svg class="h-6 w-6" style="color: oklch(0.55 0.15 85);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+						</div>
+						<p class="text-sm font-semibold" style="color: oklch(0.4 0.1 85);">รอแผนกการเงินดำเนินการเบิกจ่าย</p>
+						<p class="mt-1 text-xs" style="color: oklch(0.5 0.06 85);">ขั้นตอนนี้จะเสร็จสมบูรณ์อัตโนมัติเมื่อแผนกการเงินจ่ายเงินเรียบร้อยแล้ว</p>
+					</div>
+
+					{#if data.dikaVoucher}
+						{@const dikaStatusMap = { PENDING_EXAMINE: { label: 'รอตรวจสอบ', color: 'oklch(0.62 0.18 60)', step: 1 }, EXAMINED: { label: 'ตรวจสอบแล้ว รออนุมัติ', color: 'oklch(0.52 0.14 240)', step: 2 }, APPROVED: { label: 'อนุมัติแล้ว รอจ่ายเงิน', color: 'oklch(0.55 0.12 280)', step: 3 }, PAID: { label: 'จ่ายเงินแล้ว', color: 'oklch(0.54 0.16 150)', step: 4 }, REJECTED: { label: 'ถูกปฏิเสธ', color: 'oklch(0.58 0.2 25)', step: 0 } }}
+						{@const info = dikaStatusMap[data.dikaVoucher.status as keyof typeof dikaStatusMap] || { label: data.dikaVoucher.status, color: 'gray', step: 0 }}
+						<div class="rounded-lg border p-4">
+							<div class="flex items-center justify-between">
+								<div>
+									<p class="text-xs font-medium uppercase tracking-wider" style="color: oklch(0.5 0.02 180);">สถานะฎีกา #{data.dikaVoucher.id}</p>
+									<p class="mt-1 text-sm font-semibold" style="color: {info.color};">{info.label}</p>
+								</div>
+								<div class="text-right text-xs" style="color: oklch(0.5 0.02 180);">
+									<p>ยอดสุทธิ: <span class="font-semibold">{formatBaht(data.dikaVoucher.net_amount)}</span></p>
+								</div>
+							</div>
+							<!-- Finance progress bar -->
+							<div class="mt-3 flex gap-1">
+								{#each ['ตรวจสอบ', 'อนุมัติ', 'จ่ายเงิน', 'เสร็จสิ้น'] as label, i}
+									<div class="flex-1">
+										<div class="h-1.5 rounded-full" style="background: {i < info.step ? info.color : 'oklch(0.92 0.005 180)'};"></div>
+										<p class="mt-0.5 text-center text-[0.5625rem]" style="color: {i < info.step ? info.color : 'oklch(0.6 0.02 180)'};">{label}</p>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{:else if !data.canActOnStep}
 				<div class="mt-4 rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-700">
 					ขั้นตอนนี้รอผู้ที่มีสิทธิ์ดำเนินการ — คุณสามารถดูสถานะได้แต่ไม่สามารถดำเนินการในขั้นนี้ได้
 				</div>
@@ -714,5 +758,15 @@
 
 	.step-label--disabled {
 		color: oklch(0.6 0.01 180);
+	}
+
+	.step-assignee {
+		margin-top: 2px;
+		font-size: 0.625rem;
+		text-align: center;
+		max-width: 120px;
+		line-height: 1.3;
+		color: oklch(0.55 0.04 240);
+		font-weight: 500;
 	}
 </style>

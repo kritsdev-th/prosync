@@ -13,7 +13,7 @@ import { createBulkNotifications } from './notifications';
 import { sendEmail, buildWorkflowEmail } from './email';
 
 interface StepAssignee {
-	type: 'role' | 'creator' | 'committee' | 'specific_user';
+	type: 'role' | 'creator' | 'committee' | 'specific_user' | 'system';
 	value?: string;
 	user_id?: number;
 }
@@ -99,6 +99,10 @@ export async function resolveAssignees(
 				}
 				break;
 			}
+			case 'system': {
+				// System-managed step (e.g. waiting for finance) — no human assignees
+				break;
+			}
 		}
 	}
 
@@ -117,8 +121,9 @@ export async function resolveAssignees(
 		}
 	}
 
-	// Fallback: if still no assignees, assign to document creator
-	if (assignees.length === 0) {
+	// Fallback: if still no assignees (and not a system step), assign to document creator
+	const isSystemStep = stepAssigneeDefs.some((d) => d.type === 'system');
+	if (assignees.length === 0 && !isSystemStep) {
 		const [doc] = await db
 			.select({ updated_by: documents.updated_by })
 			.from(documents)
